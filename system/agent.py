@@ -4,6 +4,9 @@ import os
 
 from system.base import Unit
 from typing import Dict
+from retriever import (
+    HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever
+)
 
 
 class GUNDAMAgent():
