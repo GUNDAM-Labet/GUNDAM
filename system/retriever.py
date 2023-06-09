@@ -2,7 +2,7 @@ import multiprocessing as mp
 import random
 import numpy as np
 
-from base import Unit
+from utils import Unit
 from typing import List, Dict
 from tqdm import tqdm
 

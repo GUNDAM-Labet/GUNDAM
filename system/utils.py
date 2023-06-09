@@ -14,5 +14,3 @@ class Unit:
     source_emb: Optional[np.ndarray] = None
     target_emb: Optional[np.ndarray] = None
     priority_level: int
-
-

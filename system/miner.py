@@ -1,6 +1,6 @@
 import numpy as np
 
-from base import Unit
+from utils import Unit
 
 
 class Miner:

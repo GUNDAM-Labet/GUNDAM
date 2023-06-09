@@ -119,3 +119,4 @@ class Generator:
                         truncation=True,
                         padding="max_length"
                     ).to(self.device)
+
