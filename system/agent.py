@@ -2,7 +2,7 @@ import numpy as np
 import json
 import os
 
-from system.base import Unit
+from system.utils import Unit
 from typing import Dict
 from retriever import (
     HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever

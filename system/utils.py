@@ -16,4 +16,3 @@ class Unit:
     priority_level: int
 
 
-Unit

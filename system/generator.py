@@ -75,7 +75,7 @@ class Generator:
         return (tokenizer, model)
 
     def act(self, input_text, decode_method: str = "beam", add_score: bool = False, 
-                num_generate: int = 5, num_return_sequence: int = None, temperature: float = 1.0):
+                num_generate: int = 5, num_return_sequence: int = None, temperature: float = 1.0, num_batch: int = None) -> Dict:
         input2output = []
 
         method_to_kwargs = {
@@ -93,8 +93,7 @@ class Generator:
             },
             "greedy_add_scores": {
                 "return_dict_in_gen": True,
-                "output_score": True,
-                "use_cache": True
+                "output_score": True
             }
         }
         common_kwargs = {
@@ -104,3 +103,19 @@ class Generator:
             decode_method = "greedy_add_scores"
         kwargs = method_to_kwargs[decode_method]
         kwargs.update(common_kwargs)
+
+        scores = []
+        batch_idx = 0
+        with torch.no_grad():
+            for input_text_batch in list(chunks(input_text, self.batch_size)):
+                if num_batch:
+                    if batch_idx >= num_batch:
+                        break
+                
+                with torch.cuda.amp.autocast():
+                    input_idx = self.tokenizer(
+                        input_text_batch,
+                        return_tensors="pt",
+                        truncation=True,
+                        padding="max_length"
+                    ).to(self.device)
