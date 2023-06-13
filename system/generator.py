@@ -1,11 +1,12 @@
 import torch
+import logging
 
 from typing import List, Dict
 from tqdm import tqdm
 from transformers import (
     AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM, AutoConfig
 )
-import logging
+from utils import trim_batch_data
 
 logging.basicConfig(level=logging.INFO)
 
@@ -119,4 +120,8 @@ class Generator:
                         truncation=True,
                         padding="max_length"
                     ).to(self.device)
+
+                    input_idx, attention_mask = trim_batch_data(
+                        **input_idx, pad_token_id=self.tokenizer.pad_token_id
+                    )
 

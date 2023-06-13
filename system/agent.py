@@ -17,7 +17,6 @@ class GUNDAMAgent():
     def load_from_stored_data(self):
         pass
 
-        
 
     @staticmethod
     def load_from_raw_data(data_type, source_key, target_key, data_path, data_dict) -> Dict[str, Unit]:
