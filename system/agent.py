@@ -1,18 +1,27 @@
 import numpy as np
 import json
 import os
+import random
 
-from system.utils import Unit
 from typing import Dict
+from data import Unit
 from retriever import (
     HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever
 )
+from miner import BasicMiner
 
 
 class GUNDAMAgent():
     def __init__(self):
+        self.data = self.load()
+
+    def load(self):
         pass
 
+    def shuffle(self):
+        unit_list = list(self.data.values())
+        random.shuffle(unit_list)
+        self.data = {unit.unit_id: unit for unit in unit_list}
 
     def load_from_stored_data(self):
         pass
@@ -60,3 +69,18 @@ class GUNDAMAgent():
         if not emb_path:
             return
         emb_path = os.path.join(emb_path, f"{data_type}")
+
+    def initial_priority(self):
+        pass
+
+    def update_priority(self):
+        pass
+
+    def act(self):
+        pass
+
+    def tune(self): # tune generator
+        pass
+
+    def update(self): # re-run miner
+        pass

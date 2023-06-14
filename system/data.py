@@ -1,10 +1,9 @@
-import pandas as pd
 import numpy as np
 import os
 import json
 
-from typing import List, Optional, Iterator, Dict
 from torch.utils.data import Dataset
+from typing import List, Optional, Iterator, Dict
 from dataclasses import dataclass
 
 
@@ -18,13 +17,12 @@ class Unit:
     priority_level: int
 
 
-def trim_batch_data(input_idx, pad_token_id, attention_mask=None): # remove columns by pad_token_id
-    keep_column_mask = input_idx.ne(pad_token_id).any(dim=0)
+def trim_batch_data(input_ids, pad_token_id, attention_mask=None): # remove columns by pad_token_id
+    keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
     if attention_mask:
-        return (input_idx[:, keep_column_mask], attention_mask[:, keep_column_mask])
+        return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])
     else:
-        return input_idx[:, keep_column_mask]    
-
+        return input_ids[:, keep_column_mask]    
 
 
 class Seq2SeqDataset(Dataset):
@@ -69,4 +67,11 @@ class AutoregLMDataset(Dataset):
     def __init__(self, tokenizer, data_dir, max_source_len: int = 512, max_target_len: int = 128, 
                     data_type="train", source_key="question", target_key="answer", prefix=""):
         super().__init__()
-        data_path = os.path.join()
+        data_path = os.path.join(data_dir, f"{data_type}.jsonl")
+
+        self.tokenizer = tokenizer
+        self.tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+        self.prefix = prefix
+
+        self.IO_SEP = "|||"
+        self.io_sep_token_id = self.tokenizer(self.IO_SEP)["input_idx"]
