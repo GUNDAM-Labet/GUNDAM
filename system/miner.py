@@ -7,26 +7,25 @@ from data import Unit
 from converter import BaseConverter
 
 
-class BasicMiner:
-    def __init__(self, generator: Generator, data: Dict[str, Unit]):
+class BaseMiner():
+    def __init__(self, generator: Generator):
         self.generator = generator
-        self.data = data # unit_id: unit
     
-    def mine(self):
+    def mine(self, data: Dict[str, Unit]):
         raise NotImplementedError
 
 
-class Miner(BasicMiner):
-    def __init__(self, generator: Generator, data: Dict[str, Unit], converter: BaseConverter):
-        super().__init__(generator=generator, data=data)
+class Miner(BaseMiner):
+    def __init__(self, generator: Generator, converter: BaseConverter):
+        super().__init__(generator=generator)
         self.converter = converter
     
-    def batch_data(self, num_check=2) -> Iterator[List[List[Unit]]]:
+    def _batch_data(self, data: Dict[str, Unit], num_check=2) -> Iterator[List[List[Unit]]]:
         batch_size = self.generator.batch_size
 
         batch = []
         check = [] # num_check = 2 means: INTRO + x1 + y1 + x2 -> y2
-        for unit in self.data.values():
+        for unit in data.values():
             check.append(unit)
             if len(check) == num_check:
                 batch.append(check)
@@ -39,10 +38,10 @@ class Miner(BasicMiner):
         if batch:
             yield batch
 
-    def generate_batch_data(self):
+    def _generate_batch_data(self, data: Dict[str, Unit]):
         all_generations, all_outputs, all_units = [], [], []
         batch_size = self.generator.batch_size
-        for batch in tqdm(self.batch_data(num_check=2), total=len(self.data)//batch_size):
+        for batch in tqdm(self._batch_data(data=data, num_check=2), total=len(data)//batch_size):
             if len(batch[-1]) < 2:
                 break
             inputs = [self.converter.unit2code(units=[check[0]], target=[check[1]]) for check in batch]
@@ -52,9 +51,9 @@ class Miner(BasicMiner):
             all_units.extend([group[1] for group in batch])
         return (all_generations, all_outputs, all_units)
 
-    def mine(self):
+    def mine(self, data: Dict[str, Unit]):
         output2label = self.converter.OUTPUT2LABEL
-        generations, outputs, units = self.generate_batch_data()
+        generations, outputs, units = self._generate_batch_data(data=data)
         res = []
         for generation, output, unit in zip(generations, outputs, units):
             if generation != output2label[output]: # not equal -> priority += 1, equal -> priority = priority

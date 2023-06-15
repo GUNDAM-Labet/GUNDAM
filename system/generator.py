@@ -16,7 +16,7 @@ def chunks(lst: List, n: int):  # yield successive n-sized chunks from lst
         yield lst[i: i + n]
 
 
-class Generator:
+class Generator():
     def __init__(self, model_name, model_path, use_config: bool = False, config_name: str = None, 
                     is_autoreg: bool = True, batch_size: int = 32, use_fp16: bool = False, 
                     decode_method: str = "beam", add_score: bool = False, 
@@ -25,9 +25,9 @@ class Generator:
         self.is_autoreg = is_autoreg
         self.use_fp16 = use_fp16
         if use_config:
-            tokenizer, model = self.load_from_config(config_name, model_path)
+            tokenizer, model = self._load_from_config(config_name, model_path)
         else:
-            tokenizer, model = self.load_from_pretrained(config_name, model_name, model_path)
+            tokenizer, model = self._load_from_pretrained(config_name, model_name, model_path)
         
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logging.info(f"use device: {self.device}, load model from {model_path}")
@@ -93,7 +93,7 @@ class Generator:
         return kwargs
 
 
-    def load_from_config(self, config_name: str, model_path: str):
+    def _load_from_config(self, config_name: str, model_path: str):
         assert self.is_autoreg, "config only works for autoreg now"
         config = AutoConfig.from_pretrained(config_name)
         model = AutoModelForCausalLM.from_config(config)
@@ -106,7 +106,7 @@ class Generator:
         return (tokenizer, model)
     
     
-    def load_from_pretrained(self, config_name: str, model_name: str, model_path: str):
+    def _load_from_pretrained(self, config_name: str, model_name: str, model_path: str):
         try:
             tokenizer = AutoTokenizer.from_pretrained(model_name)
         except OSError: # for cases where only the model is saved, not the tokenizer

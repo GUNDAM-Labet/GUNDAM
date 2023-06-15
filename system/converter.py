@@ -1,7 +1,8 @@
 from typing import List
 from data import Unit
 
-class BaseConverter:
+
+class BaseConverter():
     INTRO = ""
     OUTPUT2LABEL = {}
     

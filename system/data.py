@@ -6,6 +6,8 @@ from torch.utils.data import Dataset
 from typing import List, Optional, Iterator, Dict
 from dataclasses import dataclass
 
+IO_SEP_TOKEN = "|||"
+
 
 @dataclass
 class Unit:
