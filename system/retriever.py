@@ -2,7 +2,7 @@ import multiprocessing as mp
 import random
 import numpy as np
 
-from system.converter import Unit
+from utils import Unit
 from typing import List, Dict
 from tqdm import tqdm
 
@@ -11,6 +11,12 @@ class BaseRetriever():
     def __init__(self, n_process: int = 1, n_shots: int = 5):
         self.n_process = n_process
         self.n_shots = n_shots
+        self.id2unit = {}
+    
+    def set_retrieval_pool(self, units: List[Unit]):
+        assert isinstance(units, list)
+        assert len(units) >= self.n_shots
+        self.id2unit = {unit.unit_id: unit for unit in units}
     
     def get_samples(self, target: Unit) -> List[Unit]:
         raise NotImplementedError
@@ -29,47 +35,45 @@ class BaseRetriever():
     
 
 class HardRetriever(BaseRetriever):
-    def __init__(self, units: List[Unit], n_process: int = 1, n_shots: int = 5):
+    def __init__(self, n_process: int = 1, n_shots: int = 5):
         super().__init__(n_process=n_process, n_shots=n_shots)
-        assert isinstance(units, list)
-        assert len(units) >= n_shots
-    
-        self.id2unit = {unit.unit_id: unit for unit in units}
-    
+        
     def get_samples(self, sample_ids: List[str], target: Unit) -> List[Unit]:
-
+        assert self.id2unit, "load data before sample"
         samples = [self.id2unit[sample_id] for sample_id in sample_ids if sample_id in self.id2unit]
         assert len(samples) == self.n_shots
         return samples
 
 
 class RandomRetriever(BaseRetriever):
-    def __init__(self, units: List[Unit], n_process: int = 1, n_shots: int = 5):
+    def __init__(self, n_process: int = 1, n_shots: int = 5):
         super().__init__(n_process=n_process, n_shots=n_shots)
-        assert isinstance(units, list)
-        assert len(units) >= n_shots
-
-        self.id2unit = {unit.unit_id: unit for unit in units}
 
     def get_samples(self, target: Unit) -> List[Unit]:
-        
+        assert self.id2unit, "load data before sample"
         samples = random.sample(list(self.id2unit.values()), self.n_shots)
         return samples
 
 
 class SimilarRetriever(BaseRetriever): # retriever top-k cosine similar units 
-    def __init__(self, units: List[Unit], n_process: int = 1, n_shots: int = 5, use_norm: bool = False):
+    def __init__(self, n_process: int = 1, n_shots: int = 5, use_norm: bool = False):
         super().__init__(n_process=n_process, n_shots=n_shots)
+        self.units = []
+        self.instance_emb = None
+        self.use_norm = use_norm
+    
+    def set_retrieval_pool(self, units: List[Unit]):
         assert isinstance(units, list)
-        assert len(units) >= n_shots
+        assert len(units) >= self.n_shots
 
         self.units = units
         self.instance_emb = np.array([unit.source_emb for unit in units], dtype=np.float64)
-        if use_norm:
+        if self.use_norm:
             u, s, vt = np.linalg.svd(self.instance_emb, full_matrices=False)
             self.W_norm = vt.T.dot(np.diag(1 / s)).dot(vt)
         
     def get_samples(self, target: Unit) -> List[Unit]:
+        assert self.units and self.instance_emb, "load data before sample"
         assert isinstance(target.source_emb, np.ndarray), f"{type(target.source_emb)}"
         x = self.instance_emb
         y = target.source_emb
@@ -85,18 +89,24 @@ class SimilarRetriever(BaseRetriever): # retriever top-k cosine similar units
 
 
 class DiverseRetriever(BaseRetriever): # retrieve top-k maximal marginal relevance units
-    def __init__(self, units: List[Unit], n_process: int = 1, n_shots: int = 5, use_norm: bool = False, use_precompute: bool = True):
+    def __init__(self, n_process: int = 1, n_shots: int = 5, use_norm: bool = False, use_precompute: bool = True):
         super().__init__(n_process=n_process, n_shots=n_shots)
+        self.units = []
+        self.instance_emb = None
+        self.use_norm = use_norm
+        self.use_precompute = use_precompute
+    
+    def set_retrieval_pool(self, units: List[Unit]):
         assert isinstance(units, list)
-        assert len(units) >= n_shots
+        assert len(units) >= self.n_shots
 
         self.units = units
         self.instance_emb = np.array([unit.source_emb for unit in units], dtype=np.float64)
-        if use_norm:
+        if self.use_norm:
             u, s, vt = np.linalg.svd(self.instance_emb, full_matrices=False)
             self.W_norm = vt.T.dot(np.diag(1 / s)).dot(vt)
             self.instance_emb = self.instance_emb.dot(self.W_norm)
-        self.use_precompute = use_precompute
+
         
     def _compute_similarity_between_instances(self, use_precompute):
         x = self.instance_emb
@@ -161,6 +171,7 @@ class DiverseRetriever(BaseRetriever): # retrieve top-k maximal marginal relevan
         return samples
     
     def get_batch_samples(self, target_indices: List[int], targets: List[Unit] = None) -> List[List[Unit]]: # todo: opt no pre-compute version
+        assert self.units and self.instance_emb, "load data before sample"
         if self.n_process <= 1:
             return [self.get_samples(target_idx) for target_idx in target_indices]
         

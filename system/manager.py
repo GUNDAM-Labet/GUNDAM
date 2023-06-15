@@ -7,14 +7,15 @@ import openai
 from tqdm import trange
 from sentence_transformers import SentenceTransformer
 from typing import Dict, List, Iterator
-from data import Unit
-from retriever import BaseRetriever
+from system.utils import Unit
+from retriever import BaseRetriever, DiverseRetriever
 from miner import BaseMiner
 from generator import Generator
+from converter import BaseConverter
 
 
 class BaseManager():
-    def __init__(self, data_type: str, data_path: str, embed_path: str):
+    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None):
         self.data_type = data_type  # train or valid
         self.embed_path = embed_path    # vectorized data storage
         self.data_path = data_path  # text data storage
@@ -118,7 +119,7 @@ class BaseManager():
         with open(self.data_path, "w") as f:
             json.dump(data, f, indent=4)
     
-    def batch_data(self, batch_size: int) -> Iterator[List[Unit]]:
+    def batch(self, batch_size: int) -> Iterator[List[Unit]]:
         batch = []
         for unit in self.data.values():
             batch.append(unit)
@@ -131,17 +132,39 @@ class BaseManager():
 
 
 class GUNDAMManager(BaseManager):
-    def __init__(self, generator: Generator, miner: BaseMiner, retriever: BaseRetriever,
-                    data_type: str, data_path: str, embed_path: str):
+    def __init__(self, data_type: str, data_path: str, embed_path: str, 
+                    generator: Generator = None, miner: BaseMiner = None, retriever: BaseRetriever = None, converter: BaseConverter = None):
         super().__init__(data_type=data_type, data_path=data_path, embed_path=embed_path)
-
         self.generator = generator
         self.miner = miner
         self.retriever = retriever
+        self.converter = converter
 
-    def _reset_priority(self):
+    def __len__(self):
+        return len(self.data)
+
+    def check(self):
+        assert isinstance(self.generator, Generator) and isinstance(self.miner, BaseMiner) and isinstance(self.retriever, BaseRetriever)
+        if not self.miner.generator:    # if miner.generator is None, use generator4evaluation as generator4miner
+            self.miner.generator = self.generator
+
+    def set_retriever(self, priority_level: int = 0, n_shots: int = 2):
+        data, max_priority_level = self.get_priority_data()
+        assert priority_level > max_priority_level, f"priority_level {priority_level} is higher than max {max_priority_level}"
+        self.retriever.n_shots = n_shots
+        self.retriever.set_retrieval_pool(data[f"{priority_level}"])
+    
+    def set_generator(self, cfg):
+        self.generator.cfg = cfg
+    
+    def set_miner(self, cfg):
+        self.miner.generator.cfg = cfg
+
+    def _reset_priority(self, priority_level=0):
+        assert priority_level >= 0, f"invaild priority level {priority_level}"
         for unit in self.data.values():
-            unit.priority_level = 0
+            if unit.priority_level > priority_level:
+                unit.priority_level = priority_level
 
     def _update_priority(self, golden_ids: List[str]):
         for idx in golden_ids:
@@ -158,20 +181,25 @@ class GUNDAMManager(BaseManager):
                 data[f"{unit.priority_level}"] = []
             else:
                 data[f"{unit.priority_level}"].append(unit)
-        return data
+        return (data, max(priority_level))
     
     def update(self): # run miner
-        data = self.get_priority_data()
-        max_priority_level = max(data.keys())
+        data, max_priority_level = self.get_priority_data()
         golden_ids = self.miner.mine(data[f"{max_priority_level}"])
-        self._update_priority(golden_ids)
+        if golden_ids:
+            self._update_priority(golden_ids)
+        else:
+            print(f"can not update priority, max priority level is {max_priority_level}")
 
-    def act(self, priority_level: int = 0):
-        data = self.get_priority_data()
-        max_priority_level = max(data.keys())
-        assert priority_level > max_priority_level, f"priority_level {priority_level} is higher than max {max_priority_level}"
-        data = data[f"{max_priority_level}"]
-
+    def act(self, idx, batch):
+        if isinstance(self.retriever, DiverseRetriever):
+            batch_size = self.generator.batch_size
+            batch_samples = self.retriever.get_batch_samples(target_indices=list(range(idx*batch_size, idx*batch_size+len(batch))))
+        else:
+            batch_samples = self.retriever.get_batch_samples(targets=batch)
+        inputs = [self.converter.unit2code(units=samples, target=unit) for samples, unit in zip(batch_samples, batch)]
+        generations = self.generator.act(input_text=inputs)
+        return generations
 
     def tune(self): # tune generator
         pass

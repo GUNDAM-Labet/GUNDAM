@@ -3,23 +3,23 @@ import tqdm
 
 from typing import List, Dict, Iterator
 from generator import Generator
-from data import Unit
+from utils import Unit
 from converter import BaseConverter
 
 
 class BaseMiner():
-    def __init__(self, generator: Generator):
+    def __init__(self, generator: Generator, converter: BaseConverter):
         self.generator = generator
+        self.converter = converter
     
     def mine(self, data: Dict[str, Unit]):
         raise NotImplementedError
 
 
 class Miner(BaseMiner):
-    def __init__(self, generator: Generator, converter: BaseConverter):
-        super().__init__(generator=generator)
-        self.converter = converter
-    
+    def __init__(self, converter: BaseConverter, generator: Generator = None):
+        super().__init__(generator=generator, converter=converter)
+        
     def _batch_data(self, data: Dict[str, Unit], num_check=2) -> Iterator[List[List[Unit]]]:
         batch_size = self.generator.batch_size
 
