@@ -10,7 +10,7 @@ from typing import Dict, List, Iterator
 from system.utils import Unit
 from retriever import BaseRetriever, DiverseRetriever
 from miner import BaseMiner
-from generator import Generator
+from generator import BaseGenerator
 from converter import BaseConverter
 
 
@@ -130,10 +130,9 @@ class BaseManager():
             yield batch
 
 
-
 class GUNDAMManager(BaseManager):
     def __init__(self, data_type: str, data_path: str, embed_path: str, 
-                    generator: Generator = None, miner: BaseMiner = None, retriever: BaseRetriever = None, converter: BaseConverter = None):
+                    generator: BaseGenerator = None, miner: BaseMiner = None, retriever: BaseRetriever = None, converter: BaseConverter = None):
         super().__init__(data_type=data_type, data_path=data_path, embed_path=embed_path)
         self.generator = generator
         self.miner = miner
@@ -144,7 +143,7 @@ class GUNDAMManager(BaseManager):
         return len(self.data)
 
     def check(self):
-        assert isinstance(self.generator, Generator) and isinstance(self.miner, BaseMiner) and isinstance(self.retriever, BaseRetriever)
+        assert isinstance(self.generator, BaseGenerator) and isinstance(self.miner, BaseMiner) and isinstance(self.retriever, BaseRetriever)
         if not self.miner.generator:    # if miner.generator is None, use generator4evaluation as generator4miner
             self.miner.generator = self.generator
 

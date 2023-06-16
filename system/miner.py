@@ -1,8 +1,9 @@
-import numpy as np
 import tqdm
 
 from typing import List, Dict, Iterator
 from generator import Generator
+from converter import BaseConverter
+from generator import BaseGenerator
 from utils import Unit
 from converter import BaseConverter
 
@@ -16,7 +17,7 @@ class BaseMiner():
         raise NotImplementedError
 
 
-class Miner(BaseMiner):
+class One2OneMiner(BaseMiner):
     def __init__(self, converter: BaseConverter, generator: Generator = None):
         super().__init__(generator=generator, converter=converter)
         
@@ -59,3 +60,21 @@ class Miner(BaseMiner):
             if generation != output2label[output]: # not equal -> priority += 1, equal -> priority = priority
                 res.append(unit.unit_id)
         return res
+
+
+class Pair2OneMiner(BaseMiner):
+    def __init__(self, generator: Generator, converter: BaseConverter):
+        super().__init__(generator=generator, converter=converter)
+        raise NotImplementedError
+
+
+class One2PairMiner(BaseMiner):
+    def __init__(self, generator: Generator, converter: BaseConverter):
+        super().__init__(generator=generator, converter=converter)
+        raise NotImplementedError
+
+
+class Pair2PairMiner(BaseMiner):
+    def __init__(self, generator: Generator, converter: BaseConverter):
+        super().__init__(generator=generator, converter=converter)
+        raise NotImplementedError

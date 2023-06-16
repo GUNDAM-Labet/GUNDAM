@@ -9,9 +9,9 @@ import json
 
 from transformers import is_torch_available
 from manager import BaseManager, GUNDAMManager
-from generator import Generator
+from generator import BaseGenerator, GPTGenerator
 from converter import BaseConverter, SentimentConverter
-from miner import BaseMiner, Miner
+from miner import BaseMiner, One2OneMiner
 from retriever import BaseRetriever, HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever
 
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +43,7 @@ def config_generation(args):
         train.load(data_dict=dataset, source_key=args.src_key, target_key=args.src_key)
     else:
         train.load(source_key=args.src_key, target_key=args.src_key)
-    generator4miner = Generator(model_name=args.model_name, model_path=args.model_path, from_config=args.from_config, 
+    generator4miner = GPTGenerator(model_name=args.model_name, model_path=args.model_path, from_config=args.from_config, 
         config_name=args.config_name, is_autoreg=args.is_autoreg, batch_size=args.batch_size, use_fp16=args.use_fp16)
     generator4miner.model.zero_grad()
     generator4miner.model.eval()
@@ -51,12 +51,12 @@ def config_generation(args):
     logging.info(f"generator4miner tokenizer length is {len(generator4miner.tokenizer)}" + "\n")
     converter = SentimentConverter()
     train.converter = converter
-    miner = Miner(generator=generator4miner, converter=converter)
+    miner = One2OneMiner(generator=generator4miner, converter=converter)
     train.miner = miner
     retriever = {"hard": HardRetriever, "ran": RandomRetriever, "sim": SimilarRetriever, "div": DiverseRetriever}[args.retriever]
     train.retriever = retriever
     
-    generator4evaluator = Generator(model_name=args.model_name, model_path=args.model_path, from_config=args.from_config, 
+    generator4evaluator = GPTGenerator(model_name=args.model_name, model_path=args.model_path, from_config=args.from_config, 
         config_name=args.config_name, is_autoreg=args.is_autoreg, batch_size=args.batch_size, use_fp16=args.use_fp16)
     train.generator = generator4evaluator
     logging.info("===== GENERATOR4EVALUSTOR LOADED =====" + "\n")

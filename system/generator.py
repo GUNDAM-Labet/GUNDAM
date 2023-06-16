@@ -8,32 +8,61 @@ from transformers import (
 )
 from utils import trim_batch_data
 from config import ConfigGenerator
+from utils import IO_SEP_TOKEN, PAD_TOKEN
 
 logging.basicConfig(level=logging.INFO)
-
 
 def chunks(lst: List, n: int):  # yield successive n-sized chunks from lst
     for i in range(0, len(lst), n):
         yield lst[i: i + n]
 
-
-class Generator():
-    def __init__(self, model_name, model_path, from_config: bool = False, config_name: str = None, 
-                    is_autoreg: bool = True, batch_size: int = 32, use_fp16: bool = False):
-        self.is_autoreg = is_autoreg
+class BaseGenerator():
+    def __init__(self, model_name, model_path, from_config: bool, config_name: str, is_autoreg: bool,
+                        batch_size: int, use_fp16: bool):
+        self.model_name = model_name
+        self.model_path = model_path
+        self.from_config = from_config
+        self.config_name = config_name
+        
         self.use_fp16 = use_fp16
-        self.cfg = ConfigGenerator(
-            model_name=model_name, model_path=model_path, from_config=from_config, config_name=config_name
-        )
+        self.is_autoreg = is_autoreg
         self.batch_size = batch_size
-        
-        if from_config:
-            tokenizer, model = self._load_from_config(config_name, model_path)
-        else:
-            tokenizer, model = self._load_from_pretrained(config_name, model_name, model_path)
-        
+        self.max_context_len = 4096
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logging.info(f"use device: {self.device}, load model from {model_path}")
+
+        self.model, self.tokenizer = None, None
+        
+    
+    def load(self):
+        raise NotImplementedError
+    
+    def set(self):
+        raise NotImplementedError
+
+    def act(self, input_text) -> Dict:
+        raise NotImplementedError
+
+    def tune(self):
+        raise NotImplementedError
+
+
+class GPTGenerator(BaseGenerator):
+    def __init__(self, model_name, model_path, from_config: bool = False, config_name: str = None, is_autoreg: bool = True,
+                        batch_size: int = 32, use_fp16: bool = False):
+        super().__init__(model_name=model_name, model_path=model_path, from_config=from_config, config_name=config_name, 
+                            is_autoreg=is_autoreg, batch_size=batch_size, use_fp16=use_fp16)
+        
+        self.cfg = ConfigGenerator(
+            model_name=self.model_name, model_path=self.model_path, from_config=self.from_config, config_name=self.config_name
+        )
+
+    def load(self):
+        if self.from_config:
+            tokenizer, model = self._load_from_config(self.config_name, self.model_path)
+        else:
+            tokenizer, model = self._load_from_pretrained(self.config_name, self.model_name, self.model_path)
+        
         self.tokenizer = tokenizer
         self.model = model.to(self.device).eval()
 
@@ -133,3 +162,6 @@ class Generator():
             return (generations, scores)
         else:
             return generations
+    
+    def tune(self):
+        pass
