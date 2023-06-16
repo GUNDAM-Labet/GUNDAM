@@ -9,10 +9,10 @@ import json
 
 from transformers import is_torch_available
 from manager import BaseManager, GUNDAMManager
-from generator import BaseGenerator, GPTGenerator
-from converter import BaseConverter, SentimentConverter
-from miner import BaseMiner, One2OneMiner
-from retriever import BaseRetriever, HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever
+from generator import GPTGenerator
+from converter import SentimentConverter
+from miner import One2OneMiner
+from retriever import HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever
 
 logging.basicConfig(level=logging.INFO)
 

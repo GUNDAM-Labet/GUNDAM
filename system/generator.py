@@ -2,7 +2,6 @@ import torch
 import logging
 
 from typing import List, Dict
-from tqdm import tqdm
 from transformers import (
     AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM, AutoConfig, 
     TrainingArguments, Trainer

@@ -1,7 +1,4 @@
-import os
 
-from pathlib import Path
-from typing import Dict
 
 class ConfigGenerator:
     def __init__(self, decode_method: str = "beam", add_score: bool = False, num_generate: int = 5, 

@@ -238,7 +238,7 @@ class GUNDAMManager(BaseManager):
         generations = self.generator.act(input_text=inputs)
         return generations
 
-    def tune(self, reset_priority_level: bool = False, priority_level: int = 0): # tune generator
-        self.generator.tune()
+    def tune(self, num_epoch: int = 1, reset_priority_level: bool = False, priority_level: int = 0): # tune generator
+        self.generator.tune(num_epoch=num_epoch)
         if reset_priority_level:
             self._reset_priority(priority_level=priority_level)
