@@ -17,7 +17,7 @@ from utils import IO_SEP_TOKEN, PAD_TOKEN
 
 
 class BaseManager():
-    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None):
+    def __init__(self, data_type: str, data_path: str, embed_path: str):
         self.data_type = data_type  # train or valid
         self.embed_path = embed_path    # vectorized data storage
         self.data_path = data_path  # text data storage
@@ -138,7 +138,7 @@ class BaseManager():
 
 
 class GUNDAMManager(BaseManager):
-    def __init__(self, data_type: str, data_path: str, embed_path: str, 
+    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None, 
                     generator: BaseGenerator = None, miner: BaseMiner = None, retriever: BaseRetriever = None, converter: BaseConverter = None):
         super().__init__(data_type=data_type, data_path=data_path, embed_path=embed_path)
         self.generator = generator

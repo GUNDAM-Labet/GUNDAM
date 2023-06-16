@@ -6,15 +6,23 @@ from transformers import (
     AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM, AutoConfig, 
     TrainingArguments, Trainer
 )
-from utils import trim_batch_data
 from config import ConfigGenerator
 from manager import BaseManager
 
 logging.basicConfig(level=logging.INFO)
 
+
 def chunks(lst: List, n: int):  # yield successive n-sized chunks from lst
     for i in range(0, len(lst), n):
         yield lst[i: i + n]
+
+def trim_batch_data(input_ids, pad_token_id, attention_mask=None): # remove columns by pad_token_id
+    keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
+    if attention_mask:
+        return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])
+    else:
+        return input_ids[:, keep_column_mask]    
+    
 
 class BaseGenerator():
     def __init__(self, model_name, model_path, from_config: bool, config_name: str, is_autoreg: bool,

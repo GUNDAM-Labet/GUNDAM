@@ -17,7 +17,7 @@ class BaseMiner():
 
 
 class One2OneMiner(BaseMiner):
-    def __init__(self, converter: BaseConverter, generator: BaseGenerator = None):
+    def __init__(self, converter: BaseConverter = None, generator: BaseGenerator = None):
         super().__init__(generator=generator, converter=converter)
         
     def _batch_data(self, data: Dict[str, Unit], num_check=2) -> Iterator[List[List[Unit]]]:

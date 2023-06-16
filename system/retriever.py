@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 
 class BaseRetriever():
-    def __init__(self, n_process: int = 1, n_shots: int = 5):
+    def __init__(self, n_process: int, n_shots: int):
         self.n_process = n_process
         self.n_shots = n_shots
         self.id2unit = {}
