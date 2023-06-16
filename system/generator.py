@@ -4,11 +4,12 @@ import logging
 from typing import List, Dict
 from tqdm import tqdm
 from transformers import (
-    AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM, AutoConfig
+    AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM, AutoConfig, 
+    TrainingArguments, Trainer
 )
 from utils import trim_batch_data
 from config import ConfigGenerator
-from utils import IO_SEP_TOKEN, PAD_TOKEN
+from manager import BaseManager
 
 logging.basicConfig(level=logging.INFO)
 
@@ -83,10 +84,12 @@ class GPTGenerator(BaseGenerator):
             self.max_context_len = 4096
 
     def set(self, decode_method: str = None, num_generate: int = None, num_return_sequence: int = None, 
-                    add_score: bool = None, temperature: float = None, max_new_tokens: int = 150, num_batch: int = None):
+                add_score: bool = None, temperature: float = None, max_new_tokens: int = None, 
+                num_batch: int = None, max_source_len: int = None, max_target_len: int = None):
         self.cfg.set(
             decode_method=decode_method, add_score=add_score, num_generate=num_generate, max_new_tokens=max_new_tokens,
-            num_batch=num_batch, num_return_sequence=num_return_sequence, temperature=temperature
+            num_batch=num_batch, num_return_sequence=num_return_sequence, temperature=temperature, 
+            max_source_len=max_source_len, max_target_len=max_target_len
         )
 
     def _load_from_config(self, config_name: str, model_path: str):
@@ -163,5 +166,14 @@ class GPTGenerator(BaseGenerator):
         else:
             return generations
     
-    def tune(self):
-        pass
+    def tune(self, data: BaseManager, num_epoch=1):
+        training_args = TrainingArguments(do_train=True, do_eval=False, output_dir=self.model, overwrite_output_dir=True,
+                            num_train_epochs=num_epoch, fp16=self.use_fp16, logging_steps=128, save_steps=1024, 
+                            per_device_train_batch_size=self.batch_size, warmup_steps=128, weight_decay=0.01, 
+                            logging_dir=self.model_path, logging_strategy="steps", report_to="wandb")
+        trainer = Trainer(model=self.model, args=training_args, train_dataset=data, 
+                            data_collator=lambda data: {"input_ids": torch.stack([f[0] for f in data]),
+                                                        "attention_mask": torch.stack([f[1] for f in data]), 
+                                                        "label": torch.stack([f[2] for f in data])})
+        trainer.train()
+        self.tokenizer.save_pretrained(self.model_path)

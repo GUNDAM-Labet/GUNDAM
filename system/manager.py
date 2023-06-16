@@ -3,6 +3,7 @@ import json
 import os
 import random
 import openai
+import torch
 
 from tqdm import trange
 from sentence_transformers import SentenceTransformer
@@ -12,6 +13,7 @@ from retriever import BaseRetriever, DiverseRetriever
 from miner import BaseMiner
 from generator import BaseGenerator
 from converter import BaseConverter
+from utils import IO_SEP_TOKEN, PAD_TOKEN
 
 
 class BaseManager():
@@ -20,6 +22,11 @@ class BaseManager():
         self.embed_path = embed_path    # vectorized data storage
         self.data_path = data_path  # text data storage
         self.data = {}
+    
+    def __getitem__(self, idx):
+        source = self.data[idx].strip().rstrip("\n")
+        target = self.data[idx].strip().rstrip("\n")
+        return (source, target)
     
     def load(self, data_dict: Dict = None, source_key: str = "question", target_key: str = "answer"):
         if os.path.exists(self.data_path):
@@ -142,6 +149,37 @@ class GUNDAMManager(BaseManager):
     def __len__(self):
         return len(self.data)
 
+    def __getitem__(self, idx):
+        source = self.data[idx].strip().rstrip("\n")
+        target = self.data[idx].strip().rstrip("\n")
+
+        source_idx = self.generator.tokenizer(source, padding="do_not_pad", truncation=True, 
+                            max_length=self.generator.cfg.max_source_len, return_tensors="pt")["input_ids"].squeeze(0)
+        target_idx = self.generator.tokenizer(target, padding="do_not_pad", truncation=True,
+                            max_length=self.generator.cfg.max_target_len, return_tensor="pt")["input_ids"].squeeze(0)
+        io_sep_token_id = self.generator.tokenizer(IO_SEP_TOKEN)["input_ids"]
+        io_sep_token_id = torch.Tensor(io_sep_token_id)
+        eos_token_id = torch.Tensor([self.generator.tokenizer.eos_token_id])
+        if self.generator.tokenizer.pad_token_id:
+            pad_token_id = self.tokenizer.pad_token_id
+        else:
+            self.generator.tokenizer.add_tokens([PAD_TOKEN], special_tokens=True)
+            pad_token_id = self.generator.tokenizer(PAD_TOKEN)["input_ids"][0]
+        print(f"===== PAD TOKEN ID: {pad_token_id} ======")
+        x = torch.cat([source_idx, io_sep_token_id, target_idx, eos_token_id], dim=0)
+        input_span = len(source_idx)    
+        # labels are everything after input span, not standard language modeling, it's a seq2seq setup (similar strategy used to train COMET with GPT-2)
+        y = torch.cat([torch.Tensor([-100] * (input_span)), x[input_span:]], dim = 0)   
+        attention_mask = torch.tensor([1] * len(x))
+        assert x.shape == y.shape, f"x.shape {x.shape} != y.shape {y.shape}"
+        
+        max_input_len = self.generator.cfg.max_source_len + self.generator.cfg.max_target_len + 2
+        pad_len = max_input_len - len(x)    # pad tensors to max_input_len
+        x = torch.nn.functional.pad(x, (0, pad_len), value=pad_token_id)
+        attention_mask = torch.nn.functional.pad(attention_mask, (0, pad_len))
+        y = torch.nn.functional.pad(y, (0, pad_len), value=pad_token_id)
+        return (x.long(), attention_mask.long(), y.long())
+
     def check(self):
         assert isinstance(self.generator, BaseGenerator) and isinstance(self.miner, BaseMiner) and isinstance(self.retriever, BaseRetriever)
         if not self.miner.generator:    # if miner.generator is None, use generator4evaluation as generator4miner
@@ -200,5 +238,7 @@ class GUNDAMManager(BaseManager):
         generations = self.generator.act(input_text=inputs)
         return generations
 
-    def tune(self): # tune generator
-        pass
+    def tune(self, reset_priority_level: bool = False, priority_level: int = 0): # tune generator
+        self.generator.tune()
+        if reset_priority_level:
+            self._reset_priority(priority_level=priority_level)
