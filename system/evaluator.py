@@ -13,6 +13,7 @@ from generator import GPTGenerator
 from converter import SentimentConverter
 from miner import One2OneMiner
 from retriever import HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever
+from utils import ConfigData
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,14 +36,11 @@ def config_generation(args):
     set_seed(args.seed)
     dataset = datasets.load_dataset(args.dataset)
 
-    valid = BaseManager(data_type="validation", embed_path=args.embed_path)
-    valid.load(data_dict=dataset, source_key=args.src_key, target_key=args.tgt_key)
+    valid = BaseManager(data_name=args.dataset, data_type="validation", embed_path=args.embed_path)
+    valid.load(data_dict=dataset, key=ConfigData())
 
     train = GUNDAMManager(data_path=args.data_path, data_type="train", embed_path=args.embed_path)
-    if args.data_path == "":
-        train.load(data_dict=dataset, source_key=args.src_key, target_key=args.src_key)
-    else:
-        train.load(source_key=args.src_key, target_key=args.src_key)
+    train.load(data_dict=dataset, key=ConfigData())
     generator4miner = GPTGenerator(model_name=args.model_name, model_path=args.model_path, from_config=args.from_config, 
         config_name=args.config_name, is_autoreg=args.is_autoreg, batch_size=args.batch_size, use_fp16=args.use_fp16)
     generator4miner.model.zero_grad()

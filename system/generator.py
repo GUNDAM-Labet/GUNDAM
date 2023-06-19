@@ -7,9 +7,7 @@ from transformers import (
     TrainingArguments, Trainer
 )
 from torch.utils.data import IterableDataset
-from config import ConfigGenerator
-from manager import BaseManager
-from utils import IO_SEP_TOKEN, PAD_TOKEN
+from utils import ConfigGenerator, IO_SEP_TOKEN, PAD_TOKEN
 
 logging.basicConfig(level=logging.INFO)
 

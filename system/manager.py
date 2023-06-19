@@ -3,109 +3,105 @@ import json
 import os
 import random
 import openai
-import torch
 
 from tqdm import trange
 from sentence_transformers import SentenceTransformer
-from typing import Dict, List, Iterator
-from system.utils import Unit
+from typing import Dict, List, Iterator, Union
+from utils import Unit, Dataset2Key
 from retriever import BaseRetriever, DiverseRetriever
 from miner import BaseMiner
 from generator import BaseGenerator
-from converter import BaseConverter
+
 
 class BaseManager():
-    def __init__(self, data_type: str, data_path: str, embed_path: str):
+    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None, data_name: str = None):
         self.data_type = data_type  # train or valid
-        self.embed_path = embed_path    # vectorized data storage
-        self.data_path = data_path  # text data storage
+        self.data_name = data_name  # name of dataset
+        
+        if not data_path:
+            assert data_name, "at least one of data_path and data_name should be vaild"
+            current_path = os.path.abspath(os.getcwd())
+            self.data_path = os.path.join(os.path.dirname(current_path), "data/")
+        else:
+            self.data_path = data_path  # text data storage
+        self.embed_path = embed_path if embed_path else self.data_path  # vectorized data storage
+        
         self.data = {}
     
-    def __getitem__(self, idx):
-        source = self.data[idx].strip().rstrip("\n")
-        target = self.data[idx].strip().rstrip("\n")
-        return (source, target)
-    
-    def load(self, data_dict: Dict = None, source_key: str = "question", target_key: str = "answer"):
-        if os.path.exists(self.data_path):
-            self.data = self._load_from_stored_data()
+    def load(self, data_dict: Dict = None, key: Union[Dict, Dataset2Key] = None):
+        data_path = os.path.join(self.data_path, f"{self.data_name}_{self.data_type}.json")
+        if os.path.exists(data_path):
+            self.data = self._load_from_stored_data(data_path=data_path)
         else:
-            self.data = self._load_from_raw_data(data_dict=data_dict, source_key=source_key, target_key=target_key)        
+            assert data_dict, f"at least one of data_path and data_dict should be vaild"
+            if isinstance(key, Dataset2Key):
+                self.data = self._load_from_raw_data(data_dict=data_dict, key=key) 
+            elif isinstance(key, Dict):
+                self.data = self._load_from_raw_data(data_dict=data_dict, key=key[self.data_name])     
+            else:
+                print(f"key {type(key)} must be Dict or Dataset2Key")
+                raise TypeError
         
-        self._load_embedding()
+        embed_path = os.path.join(self.embed_path, f"{self.data_name}_{self.data_type}.npy")
+        if os.path.exists(embed_path):
+            self._load_embedding(embed_path=embed_path)
+        else:
+            self._compute_embedding()
+            self._load_embedding(embed_path=embed_path)
+
     
     def shuffle(self):
         unit_list = list(self.data.values())
         random.shuffle(unit_list)
         self.data = {unit.unit_id: unit for unit in unit_list}
 
-    def _load_from_stored_data(self) -> Dict[str, Unit]: # load from json
-        with open(self.data_path, "r") as f:
+    def _load_from_stored_data(self, data_path) -> Dict[str, Unit]: # load from json
+        with open(data_path, "r") as f:
             data = json.load(f)
         # convert dictionaries back to Unit objects
         data = {unit_dict["unit_id"]: Unit(**unit_dict) for unit_dict in data}
         return data
 
-    def _load_from_raw_data(self, data_dict, source_key: str = "question", target_key: str = "answer") -> Dict[str, Unit]:
-        res = {}
-
+    def _load_from_raw_data(self, data_dict: Dict, key: Dataset2Key) -> Dict[str, Unit]:
+        data = {}
         # data_dict is not None, load from data_dict, otherwise try data_path
-        if data_dict:
-            for idx, dic in enumerate(data_dict[self.data_type]):
-                uid = f"{self.data_type}-{idx}"
-                res[uid] = Unit(
-                    unit_id=uid,
-                    source_input=dic[source_key],
-                    target_emb=dic[target_key],
-                    priority_level=0
-                )
-        else:
-            with open(self.data_path, "r") as f:
-                for idx, line in enumerate(f):
-                    dic = json.loads(line)
-                    idx = f"{self.data_type}_{idx}"
-                    res[idx] = Unit(
-                        unit_id=idx,
-                        source_input=dic[source_key],
-                        target_output=dic[target_key],
-                        priority_level=0
-                    )
-        return res
+        for idx, dic in enumerate(data_dict[self.data_type]):
+            uid = f"{self.data_type}-{idx}"
+            data[uid] = Unit(
+                unit_id=uid,
+                source_input=dic[key.source_key],
+                target_output=dic[key.target_key]                
+            )
+        return data
       
-    def _compute_embedding(self, batch_size: int = 128, model: str ="text-embedding-ada-002"):
+    def _compute_embedding(self, batch_size: int = 128, model_name: str ="text-embedding-ada-002"):
         # choices for model = ["all-mpnet-base-v2", "text-embedding-ada-002"]
-        if model.startswith("text-embedding-"):
+        if model_name.startswith("text-embedding-"):
             model_type = "openai"
         else:
             model_type = "sbert"
-
-        model_dim = {"all-mpnet-base-v2": 768, "text-embedding-ada-002": 1536}[model]
+        model_dim = {"all-mpnet-base-v2": 768, "text-embedding-ada-002": 1536}[model_name]
         all_inputs = [unit.source_input for unit in self.data.values()] 
         x = np.zeros((len(all_inputs), model_dim), dtype=np.float32)
 
         for i in trange(0, len(all_inputs), batch_size):
             j = min(i + batch_size, len(all_inputs))
             if model_type == "openai":
-                res = openai.Embedding.create(input=[s.replace("\n", " ") for s in all_inputs[i:j]], model=model)
+                res = openai.Embedding.create(input=[s.replace("\n", " ") for s in all_inputs[i:j]], model=model_name)
                 embeddings = [None] * len(all_inputs[i:j])
                 for dic in res["data"]:
                     embeddings[dic["index"]] = dic["embedding"]
             elif model_type == "sbert":
-                embeddings = SentenceTransformer(model, device="cuda").encode(all_inputs[i:j])
+                embeddings = SentenceTransformer(model_name, device="cuda").encode(all_inputs[i:j])
             else:
                 raise NotImplementedError
             
             x[i:j] = np.array(embeddings, dtype=np.float32)
         
-        embed_path = os.path.join(self.embed_path, f"{self.data_type}_source.npy")
+        embed_path = os.path.join(self.embed_path, f"{self.data_name}_{self.data_type}.npy")
         np.save(embed_path, x)
 
-    def _load_embedding(self):
-        if not embed_path:
-            return
-        embed_path = os.path.join(self.embed_path, f"{self.data_type}_source.npy")
-        if not os.path.exists(embed_path):
-            return
+    def _load_embedding(self, embed_path):
         embeddings = np.load(embed_path)
         
         source_ids = [idx.split("-")[1] for idx in self.data.keys()]
@@ -136,13 +132,13 @@ class BaseManager():
 
 
 class GUNDAMManager(BaseManager):
-    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None, 
-                    generator: BaseGenerator = None, miner: BaseMiner = None, retriever: BaseRetriever = None, converter: BaseConverter = None):
-        super().__init__(data_type=data_type, data_path=data_path, embed_path=embed_path)
+    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None, data_name: str = "cola", 
+                    generator: BaseGenerator = None, miner: BaseMiner = None, retriever: BaseRetriever = None):
+        super().__init__(data_type=data_type, data_path=data_path, embed_path=embed_path, data_name=data_name)
         self.generator = generator
         self.miner = miner
         self.retriever = retriever
-        self.converter = converter
+        self.converter = miner.converter if self.miner else None
 
     def __len__(self):
         return len(self.data)        
@@ -209,3 +205,16 @@ class GUNDAMManager(BaseManager):
         self.generator.tune(data=self.data, num_epoch=num_epoch)
         if reset_priority_level:
             self._reset_priority(priority_level=priority_level)
+
+
+
+# ===== DEBUG =====
+if __name__ == "__main__":
+    import datasets
+    from utils import ConfigData
+    dataset = datasets.load_dataset("linxinyuan/cola")
+    cfg = ConfigData()
+    manager = GUNDAMManager(data_type="train")
+    manager.load(data_dict=dataset, key=cfg.get("cola"))
+    manager.shuffle()
+    print(manager.data[0])
