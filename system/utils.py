@@ -19,7 +19,7 @@ class Unit:
 
 @dataclass
 class Dataset2Key:
-    dataset: str
+    data_name: str
     source_key: str
     target_key: str
 
@@ -28,16 +28,16 @@ class ConfigData:   # for convenience of using huggingface datasets
     def __init__(self):
         self.dataset2keys = {}
         
-        dataset2key_sst2 = Dataset2Key(dataset="sst2", source_key="sentence", target_key="label")    # init for sst2 and cola
+        dataset2key_sst2 = Dataset2Key(data_name="sst2", source_key="sentence", target_key="label")    # init for sst2 and cola
         self.add(dataset2keys=dataset2key_sst2)
-        dataset2key_cola = Dataset2Key(dataset="cola", source_key="text", target_key="label")
+        dataset2key_cola = Dataset2Key(data_name="cola", source_key="text", target_key="label")
         self.add(dataset2key_cola)
     
     def add(self, dataset2keys: Union[Dict, Dataset2Key]):
         if isinstance(dataset2keys, Dict):
             self.dataset2keys.update(dataset2keys)
         elif isinstance(dataset2keys, Dataset2Key):
-            self.dataset2keys[dataset2keys.dataset] = dataset2keys
+            self.dataset2keys[dataset2keys.data_name] = dataset2keys
     
     def get(self, dataset_id):
         return self.dataset2keys[dataset_id]
@@ -106,6 +106,6 @@ if __name__ == "__main__":
     import datasets
     dataset = datasets.load_dataset("linxinyuan/cola")
     cfg = ConfigData()
-    print(cfg.get("cola").dataset)
+    print(cfg.get("cola").data_name)
     print(cfg.get("cola").source_key)
     print(cfg.get("cola").target_key)
