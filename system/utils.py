@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import json
 
 from typing import Optional, Dict, Union
 from dataclasses import dataclass
@@ -39,8 +40,8 @@ class ConfigData:   # for convenience of using huggingface datasets
         elif isinstance(dataset2keys, Dataset2Key):
             self.dataset2keys[dataset2keys.data_name] = dataset2keys
     
-    def get(self, dataset_id):
-        return self.dataset2keys[dataset_id]
+    def get(self, data_name):
+        return self.dataset2keys[data_name]
         
 
 class ConfigGenerator:
@@ -98,7 +99,17 @@ class ConfigGenerator:
         return kwargs
 
 
-
+def load_openai_key(key_file: str = None):
+    if not key_file:
+        current_path = os.path.abspath(os.getcwd())
+        key_file = os.path.join(os.path.dirname(current_path), "openai_key.json") 
+    if os.path.exists(key_file):
+        with open(key_file, "r") as f:
+            openai_key = json.load(f)
+        assert isinstance(openai_key, str), f"openai_key {type(openai_key)} must be str"
+        return openai_key
+    else:
+        raise FileNotFoundError
 
 
 # ===== DEBUG =====

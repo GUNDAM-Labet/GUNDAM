@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from config import ConfigGenerator
+from utils import ConfigGenerator
 from evaluator import config_generation, evaluate_unsupervised_generation, save_evaluations
 
 logging.basicConfig(level=logging.INFO)

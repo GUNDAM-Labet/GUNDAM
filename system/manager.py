@@ -11,10 +11,12 @@ from utils import Unit, Dataset2Key
 from retriever import BaseRetriever, DiverseRetriever
 from miner import BaseMiner
 from generator import BaseGenerator
+from utils import load_openai_key
 
 
 class BaseManager():
-    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None, data_name: str = None):
+    def __init__(self, data_type: str, data_path: str = None, embed_path: str = None, data_name: str = None, 
+                    embed_model: str = None):
         self.data_type = data_type  # train or valid
         self.data_name = data_name  # name of dataset
         
@@ -26,6 +28,7 @@ class BaseManager():
             self.data_path = data_path  # text data storage
         self.embed_path = embed_path if embed_path else self.data_path  # vectorized data storage
         
+        self.embed_model = embed_model
         self.data = {}
     
     def load(self, data_dict: Dict = None, key: Union[Dict, Dataset2Key] = None):
@@ -49,7 +52,6 @@ class BaseManager():
             self._compute_embedding()
             self._load_embedding(embed_path=embed_path)
 
-    
     def shuffle(self):
         unit_list = list(self.data.values())
         random.shuffle(unit_list)
@@ -74,34 +76,37 @@ class BaseManager():
             )
         return data
       
-    def _compute_embedding(self, batch_size: int = 128, model_name: str ="text-embedding-ada-002"):
-        # choices for model = ["all-mpnet-base-v2", "text-embedding-ada-002"]
-        if model_name.startswith("text-embedding-"):
+    def _compute_embedding(self, batch_size: int = 128):
+        assert self.embed_model in ["all-mpnet-base-v2", "text-embedding-ada-002"], f"embed_model must be [all-mpnet-base-v2, text-embedding-ada-002]"
+        if self.embed_model.startswith("text-embedding-"):
             model_type = "openai"
+            openai.api_key = load_openai_key()
         else:
             model_type = "sbert"
-        model_dim = {"all-mpnet-base-v2": 768, "text-embedding-ada-002": 1536}[model_name]
+        model_dim = {"all-mpnet-base-v2": 768, "text-embedding-ada-002": 1536}[self.embed_model]
         all_inputs = [unit.source_input for unit in self.data.values()] 
         x = np.zeros((len(all_inputs), model_dim), dtype=np.float32)
 
         for i in trange(0, len(all_inputs), batch_size):
             j = min(i + batch_size, len(all_inputs))
             if model_type == "openai":
-                res = openai.Embedding.create(input=[s.replace("\n", " ") for s in all_inputs[i:j]], model=model_name)
+                res = openai.Embedding.create(input=[s.replace("\n", " ") for s in all_inputs[i:j]], model=self.embed_model)
                 embeddings = [None] * len(all_inputs[i:j])
                 for dic in res["data"]:
                     embeddings[dic["index"]] = dic["embedding"]
             elif model_type == "sbert":
-                embeddings = SentenceTransformer(model_name, device="cuda").encode(all_inputs[i:j])
+                embeddings = SentenceTransformer(self.embed_model, device="cuda").encode(all_inputs[i:j])
             else:
                 raise NotImplementedError
             
             x[i:j] = np.array(embeddings, dtype=np.float32)
-        
+            self._save_embedding(embedding=x)
+    
+    def _save_embedding(self, embedding: np.ndarray):
         embed_path = os.path.join(self.embed_path, f"{self.data_name}_{self.data_type}.npy")
-        np.save(embed_path, x)
+        np.save(embed_path, embedding)
 
-    def _load_embedding(self, embed_path):
+    def _load_embedding(self, embed_path: str, embedding: np.ndarray):
         embeddings = np.load(embed_path)
         
         source_ids = [idx.split("-")[1] for idx in self.data.keys()]
@@ -110,14 +115,19 @@ class BaseManager():
         for idx, unit in enumerate(self.data.values()):
             unit.source_emb = source_emb[idx]
             assert isinstance(unit.source_emb, np.ndarray), f"{type(unit.source_emb)}"
+        
+    def _clear_embedding(self):
+        for unit in self.data.values():
+            unit.source_emb = None
+            unit.target_emb = None
 
     def save(self):
-        directory_path = os.path.dirname(self.data_path)
-        if not os.path.exists(directory_path):
-            os.makedirs(directory_path, exist_ok=True)
+        if not os.path.exists(self.data_path):
+            os.makedirs(self.data_path, exist_ok=True)
 
+        data_path = os.path.join(self.data_path, f"{self.data_name}_{self.data_type}.json")
         data = [unit.__dict__ for unit in self.data.values()]
-        with open(self.data_path, "w") as f:
+        with open(data_path, "w") as f:
             json.dump(data, f, indent=4)
     
     def batch(self, batch_size: int) -> Iterator[List[Unit]]:
@@ -133,8 +143,9 @@ class BaseManager():
 
 class GUNDAMManager(BaseManager):
     def __init__(self, data_type: str, data_path: str = None, embed_path: str = None, data_name: str = "cola", 
-                    generator: BaseGenerator = None, miner: BaseMiner = None, retriever: BaseRetriever = None):
-        super().__init__(data_type=data_type, data_path=data_path, embed_path=embed_path, data_name=data_name)
+                    embed_model: str = "all-mpnet-base-v2", generator: BaseGenerator = None, 
+                    miner: BaseMiner = None, retriever: BaseRetriever = None):
+        super().__init__(data_type=data_type, data_path=data_path, embed_path=embed_path, data_name=data_name, embed_model=embed_model)
         self.generator = generator
         self.miner = miner
         self.retriever = retriever
@@ -217,4 +228,4 @@ if __name__ == "__main__":
     manager = GUNDAMManager(data_type="train")
     manager.load(data_dict=dataset, key=cfg.get("cola"))
     manager.shuffle()
-    print(manager.data[0])
+    manager.save()
