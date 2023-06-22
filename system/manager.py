@@ -225,7 +225,7 @@ if __name__ == "__main__":
     from utils import ConfigData
     dataset = datasets.load_dataset("linxinyuan/cola")
     cfg = ConfigData()
-    manager = GUNDAMManager(data_type="train")
+    manager = GUNDAMManager(data_type="train", embed_model="text-embedding-ada-002")
     manager.load(data_dict=dataset, key=cfg.get("cola"))
     manager.shuffle()
     manager.save()

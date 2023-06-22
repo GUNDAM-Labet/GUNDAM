@@ -191,3 +191,9 @@ class DiverseRetriever(BaseRetriever): # retrieve top-k maximal marginal relevan
             with mp.Pool(self.n_process) as pool:
                 batch_samples = pool.starmap(self.get_samples, [(idx, shared_dict) for idx in target_indices])
             return batch_samples
+
+
+
+# ===== DEBUG =====
+if __name__ == "__main__":
+    import datasets
