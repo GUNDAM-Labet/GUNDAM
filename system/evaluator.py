@@ -3,10 +3,10 @@ import numpy as np
 import random
 import datasets
 import logging
-import tqdm
 import os
 import json
 
+from tqdm import tqdm
 from transformers import is_torch_available
 from manager import BaseManager, GUNDAMManager
 from generator import GPTGenerator

@@ -10,18 +10,6 @@ from torch.utils.data import IterableDataset
 from utils import ConfigGenerator, IO_SEP_TOKEN, PAD_TOKEN
 
 logging.basicConfig(level=logging.INFO)
-
-
-def chunks(lst: List, n: int):  # yield successive n-sized chunks from lst
-    for i in range(0, len(lst), n):
-        yield lst[i: i + n]
-
-def trim_batch_data(input_ids, pad_token_id, attention_mask=None): # remove columns by pad_token_id
-    keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
-    if attention_mask:
-        return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])
-    else:
-        return input_ids[:, keep_column_mask]    
     
 
 class BaseGenerator():
@@ -41,7 +29,6 @@ class BaseGenerator():
 
         self.model, self.tokenizer = None, None
         
-    
     def load(self):
         raise NotImplementedError
     
@@ -54,16 +41,26 @@ class BaseGenerator():
     def tune(self):
         raise NotImplementedError
 
+    @staticmethod
+    def chunks(lst: List, n: int):  # yield successive n-sized chunks from lst
+        for i in range(0, len(lst), n   ):
+            yield lst[i: i + n]
+
+    @staticmethod
+    def trim_batch_data(input_ids, pad_token_id, attention_mask=None): # remove columns by pad_token_id
+        keep_column_mask = input_ids.ne(pad_token_id).any(dim=0)
+        if attention_mask is None:
+            return input_ids[:, keep_column_mask]    
+        else:
+            return (input_ids[:, keep_column_mask], attention_mask[:, keep_column_mask])            
+
 
 class GPTGenerator(BaseGenerator):
     def __init__(self, model_name, model_path, from_config: bool = False, config_name: str = None, is_autoreg: bool = True,
                         batch_size: int = 32, use_fp16: bool = False):
         super().__init__(model_name=model_name, model_path=model_path, from_config=from_config, config_name=config_name, 
                             is_autoreg=is_autoreg, batch_size=batch_size, use_fp16=use_fp16)
-        
-        self.cfg = ConfigGenerator(
-            model_name=self.model_name, model_path=self.model_path, from_config=self.from_config, config_name=self.config_name
-        )
+        self.cfg = ConfigGenerator()
 
     def load(self):
         if self.from_config:
@@ -132,20 +129,20 @@ class GPTGenerator(BaseGenerator):
         batch_idx = 0
         
         with torch.no_grad():
-            for input_text_batch in list(chunks(input_text, self.batch_size)):
+            for input_text_batch in list(self.chunks(input_text, self.batch_size)):
                 if self.cfg.num_batch:
                     if batch_idx >= self.cfg.num_batch:
                         break
                 
                 with torch.cuda.amp.autocast():
-                    input_ids = self.tokenizer(
+                    inputs = self.tokenizer(
                         input_text_batch,
                         return_tensors="pt",
                         truncation=True,
                         padding="max_length"
                     ).to(self.device)
-
-                    input_ids, attention_mask = trim_batch_data(**input_ids, pad_token_id=self.tokenizer.pad_token_id)
+                    
+                    input_ids, attention_mask = self.trim_batch_data(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"], pad_token_id=self.tokenizer.pad_token_id)
                     if input_ids.shape[1] >= self.max_context_len - self.cfg.max_new_tokens:
                         input_ids = input_ids[:,:self.max_context_len-self.cfg.max_new_tokens]
                         attention_mask = attention_mask[:,:self.max_context_len-self.cfg.max_new_tokens]
@@ -226,3 +223,10 @@ class GPTGenerator(BaseGenerator):
                                                         "label": torch.stack([f[2] for f in data])})
         trainer.train()
         self.tokenizer.save_pretrained(self.model_path)
+    
+
+
+# ===== DEBUG =====
+if __name__ == "__main__":
+    generator = GPTGenerator(model_name="EleutherAI/gpt-neo-1.3B", model_path="EleutherAI/gpt-neo-1.3B")
+    generator.load()

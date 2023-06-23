@@ -47,7 +47,7 @@ class ConfigData:   # for convenience of using huggingface datasets
 class ConfigGenerator:
     def __init__(self, decode_method: str = "beam", add_score: bool = False, num_generate: int = 5, 
                     max_source_len: int = 64, max_target_len: int = 10, max_new_tokens: int = 150, 
-                    num_batch: int = None, num_return_sequence: int = None, temperature: float = None):
+                    num_batch: int = None, num_return_sequence: int = None, temperature: float = 1.0):
         self.decode_method = decode_method
         self.add_score = add_score
         self.num_generate = num_generate

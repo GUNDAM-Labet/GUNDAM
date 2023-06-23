@@ -37,10 +37,19 @@ class BaseRetriever():
 class HardRetriever(BaseRetriever):
     def __init__(self, n_process: int = 1, n_shots: int = 5):
         super().__init__(n_process=n_process, n_shots=n_shots)
+        self.sample_ids = []
+    
+    def set_retrieval_pool(self, units: List[Unit], sample_ids: List[str] = None):
+        assert isinstance(units, list)
+        assert len(units) >= self.n_shots
+        if sample_ids:
+            assert len(sample_ids) == self.n_shots
+        self.id2unit = {unit.unit_id: unit for unit in units}
+        self.sample_ids = sample_ids
         
-    def get_samples(self, sample_ids: List[str], target: Unit) -> List[Unit]:
-        assert self.id2unit, "load data before sample"
-        samples = [self.id2unit[sample_id] for sample_id in sample_ids if sample_id in self.id2unit]
+    def get_samples(self, target: Unit) -> List[Unit]:
+        assert self.id2unit and self.sample_ids, "load data before sample"
+        samples = [self.id2unit[sample_id] for sample_id in self.sample_ids if sample_id in self.id2unit]
         assert len(samples) == self.n_shots
         return samples
 
@@ -107,7 +116,6 @@ class DiverseRetriever(BaseRetriever): # retrieve top-k maximal marginal relevan
             self.W_norm = vt.T.dot(np.diag(1 / s)).dot(vt)
             self.instance_emb = self.instance_emb.dot(self.W_norm)
 
-        
     def _compute_similarity_between_instances(self, use_precompute):
         x = self.instance_emb
         sim_matrix = x.dot(x.T)
@@ -191,9 +199,3 @@ class DiverseRetriever(BaseRetriever): # retrieve top-k maximal marginal relevan
             with mp.Pool(self.n_process) as pool:
                 batch_samples = pool.starmap(self.get_samples, [(idx, shared_dict) for idx in target_indices])
             return batch_samples
-
-
-
-# ===== DEBUG =====
-if __name__ == "__main__":
-    import datasets

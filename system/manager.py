@@ -31,7 +31,7 @@ class BaseManager():
         self.embed_model = embed_model
         self.data = {}
     
-    def load(self, data_dict: Dict = None, key: Union[Dict, Dataset2Key] = None):
+    def load(self, data_dict: Dict = None, key: Union[Dict, Dataset2Key] = None, re_compute: bool = False):
         data_path = os.path.join(self.data_path, f"{self.data_name}_{self.data_type}.json")
         if os.path.exists(data_path):
             self.data = self._load_from_stored_data(data_path=data_path)
@@ -46,7 +46,7 @@ class BaseManager():
                 raise TypeError
         
         embed_path = os.path.join(self.embed_path, f"{self.data_name}_{self.data_type}.npy")
-        if os.path.exists(embed_path):
+        if os.path.exists(embed_path) and not re_compute:
             self._load_embedding(embed_path=embed_path)
         else:
             self._compute_embedding()
@@ -106,7 +106,7 @@ class BaseManager():
         embed_path = os.path.join(self.embed_path, f"{self.data_name}_{self.data_type}.npy")
         np.save(embed_path, embedding)
 
-    def _load_embedding(self, embed_path: str, embedding: np.ndarray):
+    def _load_embedding(self, embed_path: str):
         embeddings = np.load(embed_path)
         
         source_ids = [idx.split("-")[1] for idx in self.data.keys()]
@@ -124,8 +124,9 @@ class BaseManager():
     def save(self):
         if not os.path.exists(self.data_path):
             os.makedirs(self.data_path, exist_ok=True)
-
+        
         data_path = os.path.join(self.data_path, f"{self.data_name}_{self.data_type}.json")
+        self._clear_embedding()
         data = [unit.__dict__ for unit in self.data.values()]
         with open(data_path, "w") as f:
             json.dump(data, f, indent=4)
@@ -161,9 +162,9 @@ class GUNDAMManager(BaseManager):
 
     def set_retriever(self, priority_level: int = 0, n_shots: int = 2):
         data, max_priority_level = self.get_priority_data()
-        assert priority_level > max_priority_level, f"priority_level {priority_level} is higher than max {max_priority_level}"
+        assert priority_level <= max_priority_level, f"priority_level {priority_level} is higher than max {max_priority_level}"
         self.retriever.n_shots = n_shots
-        self.retriever.set_retrieval_pool(data[f"{priority_level}"])
+        self.retriever.set_retrieval_pool(list(data[f"{priority_level}"].values()))
     
     def set_generator(self, cfg):
         self.generator.cfg = cfg
@@ -189,9 +190,10 @@ class GUNDAMManager(BaseManager):
         for unit in self.data.values():
             if unit.priority_level not in priority_level:
                 priority_level.append(unit.priority_level)
-                data[f"{unit.priority_level}"] = []
+                data[f"{unit.priority_level}"] = {}
+                data[f"{unit.priority_level}"].update({unit.unit_id: unit})
             else:
-                data[f"{unit.priority_level}"].append(unit)
+                data[f"{unit.priority_level}"].update({unit.unit_id: unit})
         return (data, max(priority_level))
     
     def update(self): # run miner
@@ -226,6 +228,36 @@ if __name__ == "__main__":
     dataset = datasets.load_dataset("linxinyuan/cola")
     cfg = ConfigData()
     manager = GUNDAMManager(data_type="train", embed_model="text-embedding-ada-002")
-    manager.load(data_dict=dataset, key=cfg.get("cola"))
+    manager.load(data_dict=dataset, key=cfg.get("cola"), re_compute=False)
     manager.shuffle()
     manager.save()
+
+    from retriever import HardRetriever, SimilarRetriever, RandomRetriever
+    from miner import One2OneMiner
+    from converter import SentimentConverter
+    from generator import GPTGenerator
+    retriever = RandomRetriever()
+    manager.retriever = retriever
+    manager.set_retriever()
+
+    converter = SentimentConverter()
+    print("=====-1=====")
+    miner = One2OneMiner()
+    print("=====0=====")
+    generator = GPTGenerator(model_name="EleutherAI/gpt-neo-1.3B", model_path="EleutherAI/gpt-neo-1.3B")
+    print("=====1=====")
+    generator.load()
+    miner.converter = converter
+    print("=====2=====")
+    miner.generator = generator
+    print("=====3=====")
+    manager.generator = generator
+    print("=====4=====")
+    manager.miner = miner
+    manager.converter = converter
+    manager.check()
+    print("=====5=====")
+    manager.update()
+    print("=====6=====")
+    manager.act()
+    print("=====7=====")
