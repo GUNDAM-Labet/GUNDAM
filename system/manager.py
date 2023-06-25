@@ -231,6 +231,8 @@ if __name__ == "__main__":
     manager.load(data_dict=dataset, key=cfg.get("cola"), re_compute=False)
     manager.shuffle()
     manager.save()
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     from retriever import HardRetriever, SimilarRetriever, RandomRetriever
     from miner import One2OneMiner
@@ -241,7 +243,6 @@ if __name__ == "__main__":
     manager.set_retriever()
 
     converter = SentimentConverter()
-    print("=====-1=====")
     miner = One2OneMiner()
     print("=====0=====")
     generator = GPTGenerator(model_name="EleutherAI/gpt-neo-1.3B", model_path="EleutherAI/gpt-neo-1.3B")

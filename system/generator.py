@@ -123,6 +123,8 @@ class GPTGenerator(BaseGenerator):
         return (tokenizer, model)
 
     def act(self, input_text) -> Dict:
+        print("=====DEBUG=====")
+        print(self.batch_size)
         kwargs = self.cfg.get()
         generations = []
         scores = []
