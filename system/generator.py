@@ -123,8 +123,6 @@ class GPTGenerator(BaseGenerator):
         return (tokenizer, model)
 
     def act(self, input_text) -> Dict:
-        print("=====DEBUG=====")
-        print(self.batch_size)
         kwargs = self.cfg.get()
         generations = []
         scores = []
@@ -157,10 +155,10 @@ class GPTGenerator(BaseGenerator):
                     batch_generations = batch_generations["sequence"]
                 batch_generations = self.tokenizer.batch_decode(batch_generations, skip_special_tokens=False, clean_up_tokenization_spaces=False)
 
-                if (self.num_return_sequence and self.num_return_sequence > 1) or (self.cfg.num_generate and self.cfg.num_generate > 1):
-                    self.num_return_sequence = self.num_return_sequence if self.num_return_sequence else self.cfg.num_generate
-                    for i in range(0, len(batch_generations), self.num_return_sequence):
-                        generations.append(batch_generations[i : i + self.num_return_sequence])
+                if (self.cfg.num_return_sequence and self.cfg.num_return_sequence > 1) or (self.cfg.num_generate and self.cfg.num_generate > 1):
+                    self.cfg.num_return_sequence = self.cfg.num_return_sequence if self.cfg.num_return_sequence else self.cfg.num_generate
+                    for i in range(0, len(batch_generations), self.cfg.num_return_sequence):
+                        generations.append(batch_generations[i : i + self.cfg.num_return_sequence])
                 
                 if self.cfg.add_score:
                     scores.append(batch_scores.detach().cpu().tolist())

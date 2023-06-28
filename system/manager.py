@@ -31,7 +31,7 @@ class BaseManager():
         self.embed_model = embed_model
         self.data = {}
     
-    def load(self, data_dict: Dict = None, key: Union[Dict, Dataset2Key] = None, re_compute: bool = False):
+    def load(self, data_dict: Dict = None, key: Union[Dict, Dataset2Key] = None, re_compute: bool = False, load_embedding: bool = False):
         data_path = os.path.join(self.data_path, f"{self.data_name}_{self.data_type}.json")
         if os.path.exists(data_path):
             self.data = self._load_from_stored_data(data_path=data_path)
@@ -46,11 +46,13 @@ class BaseManager():
                 raise TypeError
         
         embed_path = os.path.join(self.embed_path, f"{self.data_name}_{self.data_type}.npy")
-        if os.path.exists(embed_path) and not re_compute:
-            self._load_embedding(embed_path=embed_path)
-        else:
-            self._compute_embedding()
-            self._load_embedding(embed_path=embed_path)
+
+        if load_embedding:
+            if os.path.exists(embed_path) and not re_compute:
+                self._load_embedding(embed_path=embed_path)
+            else:
+                self._compute_embedding()
+                self._load_embedding(embed_path=embed_path)
 
     def shuffle(self):
         unit_list = list(self.data.values())
@@ -231,6 +233,7 @@ if __name__ == "__main__":
     manager.load(data_dict=dataset, key=cfg.get("cola"), re_compute=False)
     manager.shuffle()
     manager.save()
+
     import os
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -246,6 +249,7 @@ if __name__ == "__main__":
     miner = One2OneMiner()
     print("=====0=====")
     generator = GPTGenerator(model_name="EleutherAI/gpt-neo-1.3B", model_path="EleutherAI/gpt-neo-1.3B")
+    generator.batch_size = 2
     print("=====1=====")
     generator.load()
     miner.converter = converter
