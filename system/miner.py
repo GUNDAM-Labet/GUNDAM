@@ -43,8 +43,6 @@ class One2OneMiner(BaseMiner):
                 break
             inputs = [self.converter.unit2code(units=[group[0]], target=group[1]) for group in batch]
             generations = self.generator.act(input_text=inputs)
-            print("===== DEBUG =====")
-            print(generations)
             
             all_generations.extend([self.converter.code2answer(generation) for generation in generations])
             all_outputs.extend([group[1].target_output for group in batch])
