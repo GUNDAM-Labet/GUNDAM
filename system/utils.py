@@ -21,17 +21,38 @@ class Unit:
 @dataclass
 class Dataset2Key:
     data_name: str
+    dataset_name: str
+    train_type: str
+    valid_type: str
     source_key: str
     target_key: str
+    converter_name: str
 
 
 class ConfigData:   # for convenience of using huggingface datasets
     def __init__(self):
         self.dataset2keys = {}
-        
-        dataset2key_sst2 = Dataset2Key(data_name="sst2", source_key="sentence", target_key="label")    # init for sst2 and cola
+
+    def load(self):    
+        dataset2key_sst2 = Dataset2Key(
+            data_name="sst2", 
+            dataset_name="sst2",
+            train_type="train",
+            valid_type="validation",
+            source_key="sentence", 
+            target_key="label",
+            converter_name="sentiment"
+        )    # init for sst2 and cola
         self.add(dataset2keys=dataset2key_sst2)
-        dataset2key_cola = Dataset2Key(data_name="cola", source_key="text", target_key="label")
+        dataset2key_cola = Dataset2Key(
+            data_name="cola",
+            dataset_name="linxinyuan/cola",
+            train_type="train",
+            valid_type="test",
+            source_key="text", 
+            target_key="label",
+            converter_name="sentiment"
+        )
         self.add(dataset2key_cola)
     
     def add(self, dataset2keys: Union[Dict, Dataset2Key]):
@@ -40,8 +61,11 @@ class ConfigData:   # for convenience of using huggingface datasets
         elif isinstance(dataset2keys, Dataset2Key):
             self.dataset2keys[dataset2keys.data_name] = dataset2keys
     
-    def get(self, data_name):
-        return self.dataset2keys[data_name]
+    def get(self, data_name: str) -> Dataset2Key:
+        if isinstance(self.dataset2keys[data_name], Dataset2Key):
+            return self.dataset2keys[data_name]
+        else:
+            raise ValueError
         
 
 class ConfigGenerator:

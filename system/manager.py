@@ -31,19 +31,16 @@ class BaseManager():
         self.embed_model = embed_model
         self.data = {}
     
-    def load(self, data_dict: Dict = None, key: Union[Dict, Dataset2Key] = None, re_compute: bool = False, load_embedding: bool = False):
+    def __len__(self):
+        return len(self.data)  
+    
+    def load(self, data_dict: Dict = None, source_key: str = None, target_key: str = None, re_compute: bool = False, load_embedding: bool = False):
         data_path = os.path.join(self.data_path, f"{self.data_name}_{self.data_type}.json")
         if os.path.exists(data_path):
             self.data = self._load_from_stored_data(data_path=data_path)
         else:
             assert data_dict, f"at least one of data_path and data_dict should be vaild"
-            if isinstance(key, Dataset2Key):
-                self.data = self._load_from_raw_data(data_dict=data_dict, key=key) 
-            elif isinstance(key, Dict):
-                self.data = self._load_from_raw_data(data_dict=data_dict, key=key[self.data_name])     
-            else:
-                print(f"key {type(key)} must be Dict or Dataset2Key")
-                raise TypeError
+            self.data = self._load_from_raw_data(data_dict=data_dict, source_key=source_key, target_key=target_key) 
         
         embed_path = os.path.join(self.embed_path, f"{self.data_name}_{self.data_type}.npy")
 
@@ -66,15 +63,15 @@ class BaseManager():
         data = {unit_dict["unit_id"]: Unit(**unit_dict) for unit_dict in data}
         return data
 
-    def _load_from_raw_data(self, data_dict: Dict, key: Dataset2Key) -> Dict[str, Unit]:
+    def _load_from_raw_data(self, data_dict: Dict, source_key: str, target_key: str) -> Dict[str, Unit]:
         data = {}
         # data_dict is not None, load from data_dict, otherwise try data_path
         for idx, dic in enumerate(data_dict[self.data_type]):
             uid = f"{self.data_type}-{idx}"
             data[uid] = Unit(
                 unit_id=uid,
-                source_input=dic[key.source_key],
-                target_output=dic[key.target_key]                
+                source_input=dic[source_key],
+                target_output=dic[target_key]                
             )
         return data
       
@@ -152,13 +149,12 @@ class GUNDAMManager(BaseManager):
         self.generator = generator
         self.miner = miner
         self.retriever = retriever
-        self.converter = miner.converter if self.miner else None
-
-    def __len__(self):
-        return len(self.data)        
+        self.converter = miner.converter if self.miner else None      
 
     def check(self):
-        assert isinstance(self.generator, BaseGenerator) and isinstance(self.miner, BaseMiner) and isinstance(self.retriever, BaseRetriever)
+        assert isinstance(self.generator, BaseGenerator) 
+        assert isinstance(self.miner, BaseMiner) 
+        assert isinstance(self.retriever, BaseRetriever)
         if not self.miner.generator:    # if miner.generator is None, use generator4evaluation as generator4miner
             self.miner.generator = self.generator
 
@@ -234,9 +230,6 @@ if __name__ == "__main__":
     manager.shuffle()
     manager.save()
 
-    import os
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-
     from retriever import HardRetriever, SimilarRetriever, RandomRetriever
     from miner import One2OneMiner
     from converter import SentimentConverter
@@ -248,8 +241,8 @@ if __name__ == "__main__":
     converter = SentimentConverter()
     miner = One2OneMiner()
     print("=====0=====")
-    generator = GPTGenerator(model_name="EleutherAI/gpt-neo-1.3B", model_path="EleutherAI/gpt-neo-1.3B")
-    generator.batch_size = 2
+    generator = GPTGenerator()
+    generator.batch_size = 8
     print("=====1=====")
     generator.load()
     miner.converter = converter
@@ -264,5 +257,3 @@ if __name__ == "__main__":
     print("=====5=====")
     manager.update()
     print("=====6=====")
-    manager.act()
-    print("=====7=====")

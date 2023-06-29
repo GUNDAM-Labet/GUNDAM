@@ -18,18 +18,23 @@ def run_supervised_generation(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", help="random seed", default=0, type=int)
-    parser.add_argument("--model_path", help="path to generator", type=str, required=True)
-    parser.add_argument("--embed_path", help="path to embeddings", type=str, required=True)
-    parser.add_argument("--output_path", help="path to store output", type=str, required=True)
-    parser.add_argument("--dataset", help="name of dataset", default="sst-2", type=str)
+    parser.add_argument("--dataset", help="name of dataset", default="cola", type=str)
     parser.add_argument("--src_key", help="source key in jsonl", default="question", type=str)
     parser.add_argument("--tgt_key", help="target key in jsonl", default="answer", type=str)
     parser.add_argument("--from_config", action="store_true", help="load generator from config")
     parser.add_argument("--config_name", help="name of config for generator", type=str)
+    parser.add_argument("--embed_model", help="name of embedding method for dense retrieval", default="all-mpnet-base-v2", choices=["all-mpnet-base-v2", "text-embedding-ada-002"])
     parser.add_argument("--mode", help="mode for evaluation", default="unsupervised", type=str, choices=["unsupervised", "supervised"])
 
+    parser.add_argument("--model_name", help="model name of GPT generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B"])
+    parser.add_argument("--model_path", help="path to generator", default="EleutherAI/gpt-neo-1.3B", type=str)
+    parser.add_argument("--embed_path", help="path to embeddings", type=str)
+    parser.add_argument("--output_path", help="path to store output", type=str)
+    parser.add_argument("--batch_size", help="batch_size of generator", default=4, type=int)
+    parser.add_argument("--use_fp16", action="store_true", help="use fp16")
+
     parser.add_argument("--n_shots", help="number of few shots", default=2, type=int)
-    parser.add_argument("--priority_level", help="iteration of run miner", default=1, type=int)
+    parser.add_argument("--priority_level", help="iteration of run miner", default=0, type=int)
     parser.add_argument("--retriever", help="name of retriever", default="ran", type=str, choices=["ran", "hard", "sim", "div"])
     parser.add_argument("--fp16", action="store_true", help="use fp16")
     parser.add_argument("--is_autoreg", help="is generator autoregressive", default=True)
@@ -52,12 +57,16 @@ if __name__ == "__main__":
         )
         args.max_new_tokens = args.max_len
 
-    cfg = ConfigGenerator()
-    cfg.set(decode_method=args.decode_method, add_score=args.add_score, temperature=args.temperature, num_generate=args.num_generate,
+    cfg_generator4miner = ConfigGenerator()
+    cfg_generator4miner.set(decode_method=args.decode_method, add_score=args.add_score, temperature=args.temperature, num_generate=args.num_generate,
                 num_batch=args.num_batch, max_new_tokens=args.max_new_tokens)
-    args.cfg_generator4miner = cfg
-    args.cfg_generator4evaluator = cfg
-    
+    args.cfg_generator4miner = cfg_generator4miner
+
+    cfg_generator4evaluator = ConfigGenerator()
+    cfg_generator4evaluator.set(decode_method=args.decode_method, add_score=args.add_score, temperature=args.temperature, num_generate=args.num_generate,
+                num_batch=args.num_batch, max_new_tokens=args.max_new_tokens)
+    args.cfg_generator4evaluator = cfg_generator4evaluator
+
     if args.mode == "unsupervised":
         run_unsupervised_generation(args)
     elif args.mode == "supervised":

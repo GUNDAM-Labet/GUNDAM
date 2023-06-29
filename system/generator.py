@@ -56,17 +56,17 @@ class BaseGenerator():
 
 
 class GPTGenerator(BaseGenerator):
-    def __init__(self, model_name, model_path, from_config: bool = False, config_name: str = None, is_autoreg: bool = True,
-                        batch_size: int = 32, use_fp16: bool = False):
+    def __init__(self, model_name: str = "EleutherAI/gpt-neo-1.3B", model_path: str = "EleutherAI/gpt-neo-1.3B", from_config: bool = False, 
+                        config_name: str = None, is_autoreg: bool = True, batch_size: int = 32, use_fp16: bool = False):
         super().__init__(model_name=model_name, model_path=model_path, from_config=from_config, config_name=config_name, 
                             is_autoreg=is_autoreg, batch_size=batch_size, use_fp16=use_fp16)
         self.cfg = ConfigGenerator()
 
     def load(self):
         if self.from_config:
-            tokenizer, model = self._load_from_config(self.config_name, self.model_path)
+            tokenizer, model = self._load_from_config()
         else:
-            tokenizer, model = self._load_from_pretrained(self.config_name, self.model_name, self.model_path)
+            tokenizer, model = self._load_from_pretrained()
         
         self.tokenizer = tokenizer
         self.model = model.to(self.device).eval()
@@ -96,30 +96,30 @@ class GPTGenerator(BaseGenerator):
             max_source_len=max_source_len, max_target_len=max_target_len
         )
 
-    def _load_from_config(self, config_name: str, model_path: str):
+    def _load_from_config(self):
         assert self.is_autoreg, "config only works for autoreg now"
-        config = AutoConfig.from_pretrained(config_name)
+        config = AutoConfig.from_pretrained(self.config_name)
         model = AutoModelForCausalLM.from_config(config)
-        tokenizer = AutoTokenizer.from_pretrained(config_name)
+        tokenizer = AutoTokenizer.from_pretrained(self.config_name)
 
-        state_dict = torch.load(model_path)
+        state_dict = torch.load(self.model_path)
         model.load_state_dict(state_dict)
         if self.use_fp16:
             model = model.half()
         return (tokenizer, model)
     
-    def _load_from_pretrained(self, config_name: str, model_name: str, model_path: str):
+    def _load_from_pretrained(self):
         try:
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         except OSError: # for cases where only the model is saved, not the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained(config_name)
+            tokenizer = AutoTokenizer.from_pretrained(self.config_name)
         
         if self.is_autoreg:
-            model = AutoModelForCausalLM.from_pretrained(model_path)
+            model = AutoModelForCausalLM.from_pretrained(self.model_path)
             if self.use_fp16:
                 model = model.half()
         else:
-            model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+            model = AutoModelForSeq2SeqLM.from_pretrained(self.model_path)
         return (tokenizer, model)
 
     def act(self, input_text) -> Dict:
