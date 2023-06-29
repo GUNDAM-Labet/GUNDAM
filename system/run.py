@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 
 from utils import ConfigGenerator
 from evaluator import config_generation, evaluate_unsupervised_generation, save_evaluations
@@ -9,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 def run_unsupervised_generation(args):
     train, valid = config_generation(args)
     acc, units, generations, outputs = evaluate_unsupervised_generation(train=train, vaild=valid)
-    save_evaluations(acc=acc, num=len(train), units=units, generations=generations, outputs=outputs)
+    save_evaluations(args=args, acc=acc, num=len(train), units=units, generations=generations, outputs=outputs)
 
 def run_supervised_generation(args):
     pass
@@ -27,7 +28,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", help="mode for evaluation", default="unsupervised", type=str, choices=["unsupervised", "supervised"])
 
     parser.add_argument("--model_name", help="model name of GPT generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B"])
-    parser.add_argument("--model_path", help="path to generator", default="EleutherAI/gpt-neo-1.3B", type=str)
+    parser.add_argument("--model_path", help="path to generator", type=str)
     parser.add_argument("--embed_path", help="path to embeddings", type=str)
     parser.add_argument("--output_path", help="path to store output", type=str)
     parser.add_argument("--batch_size", help="batch_size of generator", default=4, type=int)
@@ -50,6 +51,12 @@ if __name__ == "__main__":
     parser.add_argument("--add_io_sep", type=str, default="true", help="add io sep")
 
     args = parser.parse_args()
+    
+    current_path = os.path.abspath(os.getcwd())
+    args.model_path = os.path.join(os.path.dirname(current_path), "data/") if args.model_path is None else args.model_path
+    args.embed_path = os.path.join(os.path.dirname(current_path), "data/") if args.embed_path is None else args.model_path
+    args.output_path = os.path.join(os.path.dirname(current_path), "data/") if args.output_path is None else args.output_path
+
     args.add_io_sep = args.add_io_sep.lower() == "true"
     if args.max_len and not args.max_new_tokens:
         logging.warning(
