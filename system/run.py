@@ -28,7 +28,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", help="mode for evaluation", default="unsupervised", type=str, choices=["unsupervised", "supervised"])
 
     parser.add_argument("--model_name", help="model name of GPT generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B"])
-    parser.add_argument("--model_path", help="path to generator", type=str)
+    parser.add_argument("--model_path", help="path to generator", default="EleutherAI/gpt-neo-1.3B", type=str)
     parser.add_argument("--embed_path", help="path to embeddings", type=str)
     parser.add_argument("--output_path", help="path to store output", type=str)
     parser.add_argument("--batch_size", help="batch_size of generator", default=4, type=int)
