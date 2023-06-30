@@ -41,9 +41,10 @@ class ConfigData:   # for convenience of using huggingface datasets
             valid_type="validation",
             source_key="sentence", 
             target_key="label",
-            converter_name="sentiment"
-        )    # init for sst2 and cola
+            converter_name="sst2"
+        ) 
         self.add(dataset2keys=dataset2key_sst2)
+        
         dataset2key_cola = Dataset2Key(
             data_name="cola",
             dataset_name="linxinyuan/cola",
@@ -51,9 +52,52 @@ class ConfigData:   # for convenience of using huggingface datasets
             valid_type="test",
             source_key="text", 
             target_key="label",
-            converter_name="sentiment"
+            converter_name="cola"
         )
         self.add(dataset2key_cola)
+
+        dataset2key_sst5 = Dataset2Key(
+            data_name="sst5",
+            dataset_name="SetFit/sst5",
+            train_type="train",
+            valid_type="test",
+            source_key="text",
+            target_key="label",
+            converter_name="sst5"
+        )
+        self.add(dataset2key_sst5)
+
+        dataset2key_fpb = Dataset2Key(
+            data_name="fpb",
+            dataset_name="cyrilzhang/financial_phrasebank_split",
+            train_type="train",
+            valid_type="test",
+            source_key="sentence",
+            target_key="label",
+            converter_name="fpb"
+        )
+        self.add(dataset2key_fpb)
+
+        dataset2key_trec = Dataset2Key(
+            data_name="trec",
+            dataset_name="trec",
+            train_type="train",
+            valid_type="test",
+            source_key="text",
+            target_key="coarse_label",
+            converter_name="trec"
+        )
+        self.add(dataset2key_trec)
+
+        dataset2key_subj = Dataset2Key(
+            data_name="subj",
+            dataset_name="SetFit/subj",
+            train_type="train",
+            valid_type="test",
+            source_key="text",
+            target_key="label",
+            converter_name="subj"
+        )
     
     def add(self, dataset2keys: Union[Dict, Dataset2Key]):
         if isinstance(dataset2keys, Dict):

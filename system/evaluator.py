@@ -10,7 +10,7 @@ from tqdm import tqdm
 from transformers import is_torch_available
 from manager import BaseManager, GUNDAMManager
 from generator import GPTGenerator
-from converter import SentimentConverter
+from converter import load_converter
 from miner import One2OneMiner
 from retriever import HardRetriever, RandomRetriever, SimilarRetriever, DiverseRetriever
 from utils import ConfigData
@@ -51,7 +51,7 @@ def config_generation(args):
     generator4miner.model.eval()
     logging.info("===== GENERATOR4MINER LOADED =====" + "\n")
     logging.info(f"generator4miner tokenizer length is {len(generator4miner.tokenizer)}" + "\n")
-    converter = SentimentConverter()
+    converter = load_converter(cfg.get(args.dataset).converter_name)
     train.converter = converter
     miner = One2OneMiner(generator=generator4miner, converter=converter)
     train.miner = miner
