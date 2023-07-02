@@ -219,6 +219,7 @@ class GUNDAMManager(BaseManager):
 
 
 
+
 # ===== DEBUG =====
 if __name__ == "__main__":
     import datasets
@@ -232,13 +233,13 @@ if __name__ == "__main__":
 
     from retriever import HardRetriever, SimilarRetriever, RandomRetriever
     from miner import One2OneMiner
-    from converter import SentimentConverter
+    from converter import SST2Converter
     from generator import GPTGenerator
     retriever = RandomRetriever()
     manager.retriever = retriever
     manager.set_retriever()
 
-    converter = SentimentConverter()
+    converter = SST2Converter()
     miner = One2OneMiner()
     print("=====0=====")
     generator = GPTGenerator()

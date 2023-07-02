@@ -175,33 +175,37 @@ class GPTGenerator(BaseGenerator):
     def tune(self, data: Dict, num_epoch=1):
 
         class Dataset4Tune(IterableDataset):
-            def __init__(self, data, tokenizer, cfg):
+            def __init__(self, data: Dict, tokenizer, cfg):
                 self.data = data
                 self.tokenizer = tokenizer
                 self.cfg = cfg
+
+                # config tokenizer
+                io_sep_token_id = self.tokenizer(IO_SEP_TOKEN)["input_ids"]
+                self.io_sep_token_id = torch.Tensor(io_sep_token_id)
+                self.eos_token_id = torch.Tensor([self.tokenizer.eos_token_id])
+                if self.tokenizer.pad_token_id:
+                    self.pad_token_id = self.tokenizer.pad_token_id
+                else:
+                    self.tokenizer.add_tokens([PAD_TOKEN], special_tokens=True)
+                    self.pad_token_id = self.tokenizer(PAD_TOKEN)["input_ids"][0]
             
             def __len__(self):
                 return len(self.data)
-            
-            def __getitem__(self, idx) -> Iterator:
-                source = self.data[idx].strip().rstrip("\n")
-                target = self.data[idx].strip().rstrip("\n")
 
-                source_idx = self.tokenizer(source, padding="do_not_pad", truncation=True, 
+            def __getitem__(self, idx):
+                assert idx in self.data, "idx must be in stored data"
+
+                source_input = self.data[idx].source_input.strip().rstrip("\n")
+                target_output = self.data[idx].target_output.strip().rstrip("\n")
+                source_idx = self.tokenizer(source_input, padding="do_not_pad", truncation=True, 
                                     max_length=self.cfg.max_source_len, return_tensors="pt")["input_ids"].squeeze(0)
-                target_idx = self.tokenizer(target, padding="do_not_pad", truncation=True,
+                target_idx = self.tokenizer(target_output, padding="do_not_pad", truncation=True,
                                     max_length=self.cfg.max_target_len, return_tensor="pt")["input_ids"].squeeze(0)
-                io_sep_token_id = self.tokenizer(IO_SEP_TOKEN)["input_ids"]
-                io_sep_token_id = torch.Tensor(io_sep_token_id)
-                eos_token_id = torch.Tensor([self.tokenizer.eos_token_id])
-                if self.tokenizer.pad_token_id:
-                    pad_token_id = self.tokenizer.pad_token_id
-                else:
-                    self.tokenizer.add_tokens([PAD_TOKEN], special_tokens=True)
-                    pad_token_id = self.tokenizer(PAD_TOKEN)["input_ids"][0]
-                print(f"===== PAD TOKEN ID: {pad_token_id} ======")
-                x = torch.cat([source_idx, io_sep_token_id, target_idx, eos_token_id], dim=0)
+                
+                x = torch.cat([source_idx, self.io_sep_token_id, target_idx, self.eos_token_id], dim=0)
                 input_span = len(source_idx)    
+                
                 # labels are everything after input span, not standard language modeling, it's a seq2seq setup (similar strategy used to train COMET with GPT-2)
                 y = torch.cat([torch.Tensor([-100] * (input_span)), x[input_span:]], dim = 0)   
                 attention_mask = torch.tensor([1] * len(x))
@@ -209,9 +213,10 @@ class GPTGenerator(BaseGenerator):
                 
                 max_input_len = self.cfg.max_source_len + self.cfg.max_target_len + 2
                 pad_len = max_input_len - len(x)    # pad tensors to max_input_len
-                x = torch.nn.functional.pad(x, (0, pad_len), value=pad_token_id)
+                
+                x = torch.nn.functional.pad(x, (0, pad_len), value=self.pad_token_id)
                 attention_mask = torch.nn.functional.pad(attention_mask, (0, pad_len))
-                y = torch.nn.functional.pad(y, (0, pad_len), value=pad_token_id)
+                y = torch.nn.functional.pad(y, (0, pad_len), value=self.pad_token_id)
                 return (x.long(), attention_mask.long(), y.long())
 
         train_dataset = Dataset4Tune(data=data, tokenizer=self.tokenizer, cfg=self.cfg)
@@ -226,6 +231,7 @@ class GPTGenerator(BaseGenerator):
         trainer.train()
         self.tokenizer.save_pretrained(self.model_path)
     
+
 
 
 # ===== DEBUG =====
