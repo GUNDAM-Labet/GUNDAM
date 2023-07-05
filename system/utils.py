@@ -2,6 +2,7 @@ import os
 import numpy as np
 import json
 
+from huggingface_hub import hf_hub_download
 from typing import Optional, Dict, Union
 from dataclasses import dataclass
 
@@ -179,6 +180,10 @@ def load_openai_key(key_file: str = None):
         return openai_key
     else:
         raise FileNotFoundError
+
+def download_gpt_from_hub():
+    hf_hub_download()
+
 
 
 # ===== DEBUG =====

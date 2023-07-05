@@ -246,6 +246,10 @@ sympy-plots-for-*.tex/
 *.pdf
 *.pem
 .DS_Store
+log/
+/log/
+logs/
+/logs/
 
 # openai
 openai_key.json
