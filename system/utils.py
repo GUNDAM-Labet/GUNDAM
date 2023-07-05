@@ -181,16 +181,13 @@ def load_openai_key(key_file: str = None):
     else:
         raise FileNotFoundError
 
-def download_gpt_from_hub():
-    hf_hub_download()
+def download_gpt_from_hub(model_name: str):
+    current_path = os.path.abspath(os.getcwd())
+    save_path = os.path.join(os.path.dirname(current_path), "log/")
+    hf_hub_download(repo_id=model_name, local_dir=save_path)
 
 
 
 # ===== DEBUG =====
-if __name__ == "__main__":
-    import datasets
-    dataset = datasets.load_dataset("linxinyuan/cola")
-    cfg = ConfigData()
-    print(cfg.get("cola").data_name)
-    print(cfg.get("cola").source_key)
-    print(cfg.get("cola").target_key)
+if __name__ == "__main__":  
+    download_gpt_from_hub("gpt2-medium")

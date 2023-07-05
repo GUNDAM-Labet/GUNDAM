@@ -2,7 +2,7 @@
 GUNDAM
 --------
 
-**CORE** is a data manager that utilizes language models to efficiently handle textual data, which is built upon `PyTorch <https://pytorch.org>`_.
+**GUNDAM** is a data manager that utilizes language models to efficiently handle textual data, which is built upon `PyTorch <https://pytorch.org>`_.
 GUNDAM is
 
 - **Comprehensive**: GUNDAM provides data manager including our proposed miner, a GPT-2 based generator, and a demonstration retriever, and all of these components are extendable.
