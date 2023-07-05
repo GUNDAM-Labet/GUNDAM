@@ -139,6 +139,20 @@ class BaseManager():
                 batch = []
         if batch:   # remaining units in the case where total number is not a multiple of batch_size
             yield batch
+    
+    def split(self, split_ratio: float):
+        assert split_ratio < 1, f"split_ratio {split_ratio} should be smaller than 1"
+        uids = list(self.data.keys())
+        train_ids = random.choices(uids, k=int(split_ratio*len(uids)))
+        train, valid = {}, {}
+        
+        for uid in uids:
+            if uid in train_ids:
+                train.update({uid: self.data[uid]})
+            else:
+                valid.update({uid: self.data[uid]})
+        assert len(train) + len(valid) == len(self.data)
+        return (train, valid)
 
 
 class GUNDAMManager(BaseManager):
@@ -212,8 +226,9 @@ class GUNDAMManager(BaseManager):
         generations = self.generator.act(input_text=inputs)
         return generations
 
-    def tune(self, num_epoch: int = 1, reset_priority_level: bool = False, priority_level: int = 0): # tune generator
-        self.generator.tune(data=self.data, num_epoch=num_epoch)
+    def tune(self, num_epoch: int = 1, split_ratio: float = 0.8, reset_priority_level: bool = False, priority_level: int = 0): # tune generator
+        train, valid = self.split(split_ratio=split_ratio)
+        self.generator.tune(train=train, valid=valid, num_epoch=num_epoch)
         if reset_priority_level:
             self._reset_priority(priority_level=priority_level)
 
@@ -224,10 +239,14 @@ class GUNDAMManager(BaseManager):
 if __name__ == "__main__":
     import datasets
     from utils import ConfigData
-    dataset = datasets.load_dataset("linxinyuan/cola")
+    data_name = "cola"
     cfg = ConfigData()
+    cfg.load()
+
+    dataset = datasets.load_dataset(cfg.get(data_name).dataset_name)
+
     manager = GUNDAMManager(data_type="train", embed_model="text-embedding-ada-002")
-    manager.load(data_dict=dataset, key=cfg.get("cola"), re_compute=False)
+    manager.load(data_dict=dataset, source_key=cfg.get(data_name).source_key, target_key=cfg.get(data_name).target_key, re_compute=False)
     manager.shuffle()
     manager.save()
 
@@ -242,7 +261,7 @@ if __name__ == "__main__":
     converter = SST2Converter()
     miner = One2OneMiner()
     print("=====0=====")
-    generator = GPTGenerator()
+    generator = GPTGenerator(model_name="gpt2-medium", model_path="gpt2-medium")
     generator.batch_size = 8
     print("=====1=====")
     generator.load()
@@ -251,6 +270,8 @@ if __name__ == "__main__":
     miner.generator = generator
     print("=====3=====")
     manager.generator = generator
+    manager.tune()
+    exit()
     print("=====4=====")
     manager.miner = miner
     manager.converter = converter

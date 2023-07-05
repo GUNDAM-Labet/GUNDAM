@@ -6,7 +6,7 @@ from transformers import (
     AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM, AutoConfig, 
     TrainingArguments, Trainer
 )
-from torch.utils.data import IterableDataset
+from torch.utils.data import Dataset
 from utils import ConfigGenerator, IO_SEP_TOKEN, PAD_TOKEN
 
 logging.basicConfig(level=logging.INFO)
@@ -172,13 +172,15 @@ class GPTGenerator(BaseGenerator):
         else:
             return batch_generations
     
-    def tune(self, data: Dict, num_epoch=1):
+    def tune(self, train: Dict, valid: Dict, num_epoch=1):
 
-        class Dataset4Tune(IterableDataset):
+        class Dataset4Tune(Dataset):
             def __init__(self, data: Dict, tokenizer, cfg):
                 self.data = data
                 self.tokenizer = tokenizer
                 self.cfg = cfg
+
+                self.uids = list(self.data.keys())
 
                 # config tokenizer
                 io_sep_token_id = self.tokenizer(IO_SEP_TOKEN)["input_ids"]
@@ -194,10 +196,16 @@ class GPTGenerator(BaseGenerator):
                 return len(self.data)
 
             def __getitem__(self, idx):
-                assert idx in self.data, "idx must be in stored data"
-
-                source_input = self.data[idx].source_input.strip().rstrip("\n")
-                target_output = self.data[idx].target_output.strip().rstrip("\n")
+                uid = self.uids[idx]
+                print("==== DEBUG =====")
+                print(idx)
+                print(uid)
+                print(self.data[uid])
+                print(self.data[uid].source_input)
+                print(self.data[uid].target_output)
+                exit()
+                source_input = self.data[uid].source_input.strip().rstrip("\n")
+                target_output = self.data[uid].target_output.strip().rstrip("\n")
                 source_idx = self.tokenizer(source_input, padding="do_not_pad", truncation=True, 
                                     max_length=self.cfg.max_source_len, return_tensors="pt")["input_ids"].squeeze(0)
                 target_idx = self.tokenizer(target_output, padding="do_not_pad", truncation=True,
@@ -219,22 +227,16 @@ class GPTGenerator(BaseGenerator):
                 y = torch.nn.functional.pad(y, (0, pad_len), value=self.pad_token_id)
                 return (x.long(), attention_mask.long(), y.long())
 
-        train_dataset = Dataset4Tune(data=data, tokenizer=self.tokenizer, cfg=self.cfg)
-        training_args = TrainingArguments(do_train=True, do_eval=False, output_dir=self.model, overwrite_output_dir=True,
+        train = Dataset4Tune(data=train, tokenizer=self.tokenizer, cfg=self.cfg)
+        valid = Dataset4Tune(data=valid, tokenizer=self.tokenizer, cfg=self.cfg)
+        training_args = TrainingArguments(do_train=True, do_eval=True, output_dir=self.model_path, overwrite_output_dir=True,
                             num_train_epochs=num_epoch, fp16=self.use_fp16, logging_steps=128, save_steps=1024, 
                             per_device_train_batch_size=self.batch_size, warmup_steps=128, weight_decay=0.01, 
-                            logging_dir=self.model_path, logging_strategy="steps", report_to="wandb")
-        trainer = Trainer(model=self.model, args=training_args, train_dataset=train_dataset, 
+                            logging_dir=self.model_path, logging_strategy="steps", evaluation_strategy="steps", 
+                            eval_steps=1024, report_to="wandb")
+        trainer = Trainer(model=self.model, args=training_args, train_dataset=train, eval_dataset=valid,
                             data_collator=lambda data: {"input_ids": torch.stack([f[0] for f in data]),
                                                         "attention_mask": torch.stack([f[1] for f in data]), 
                                                         "label": torch.stack([f[2] for f in data])})
         trainer.train()
         self.tokenizer.save_pretrained(self.model_path)
-    
-
-
-
-# ===== DEBUG =====
-if __name__ == "__main__":
-    generator = GPTGenerator(model_name="EleutherAI/gpt-neo-1.3B", model_path="EleutherAI/gpt-neo-1.3B")
-    generator.load()

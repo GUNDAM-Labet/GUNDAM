@@ -249,3 +249,7 @@ sympy-plots-for-*.tex/
 
 # openai
 openai_key.json
+
+# wandb
+wandb/
+/wandb/

@@ -98,6 +98,7 @@ class ConfigData:   # for convenience of using huggingface datasets
             target_key="label",
             converter_name="subj"
         )
+        self.add(dataset2key_subj)
     
     def add(self, dataset2keys: Union[Dict, Dataset2Key]):
         if isinstance(dataset2keys, Dict):
