@@ -257,3 +257,9 @@ openai_key.json
 # wandb
 wandb/
 /wandb/
+
+# models
+/gpt2-medium/
+gpt2-medium/
+/gpt2-large/
+gpt2-large/

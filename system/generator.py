@@ -197,19 +197,12 @@ class GPTGenerator(BaseGenerator):
 
             def __getitem__(self, idx):
                 uid = self.uids[idx]
-                print("==== DEBUG =====")
-                print(idx)
-                print(uid)
-                print(self.data[uid])
-                print(self.data[uid].source_input)
-                print(self.data[uid].target_output)
-                exit()
                 source_input = self.data[uid].source_input.strip().rstrip("\n")
                 target_output = self.data[uid].target_output.strip().rstrip("\n")
                 source_idx = self.tokenizer(source_input, padding="do_not_pad", truncation=True, 
                                     max_length=self.cfg.max_source_len, return_tensors="pt")["input_ids"].squeeze(0)
                 target_idx = self.tokenizer(target_output, padding="do_not_pad", truncation=True,
-                                    max_length=self.cfg.max_target_len, return_tensor="pt")["input_ids"].squeeze(0)
+                                    max_length=self.cfg.max_target_len, return_tensors="pt")["input_ids"].squeeze(0)
                 
                 x = torch.cat([source_idx, self.io_sep_token_id, target_idx, self.eos_token_id], dim=0)
                 input_span = len(source_idx)    
@@ -237,6 +230,6 @@ class GPTGenerator(BaseGenerator):
         trainer = Trainer(model=self.model, args=training_args, train_dataset=train, eval_dataset=valid,
                             data_collator=lambda data: {"input_ids": torch.stack([f[0] for f in data]),
                                                         "attention_mask": torch.stack([f[1] for f in data]), 
-                                                        "label": torch.stack([f[2] for f in data])})
+                                                        "labels": torch.stack([f[2] for f in data])})
         trainer.train()
         self.tokenizer.save_pretrained(self.model_path)

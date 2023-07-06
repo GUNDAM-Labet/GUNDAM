@@ -139,20 +139,6 @@ class BaseManager():
                 batch = []
         if batch:   # remaining units in the case where total number is not a multiple of batch_size
             yield batch
-    
-    def split(self, split_ratio: float):
-        assert split_ratio < 1, f"split_ratio {split_ratio} should be smaller than 1"
-        uids = list(self.data.keys())
-        train_ids = random.choices(uids, k=int(split_ratio*len(uids)))
-        train, valid = {}, {}
-        
-        for uid in uids:
-            if uid in train_ids:
-                train.update({uid: self.data[uid]})
-            else:
-                valid.update({uid: self.data[uid]})
-        assert len(train) + len(valid) == len(self.data)
-        return (train, valid)
 
 
 class GUNDAMManager(BaseManager):
@@ -226,8 +212,30 @@ class GUNDAMManager(BaseManager):
         generations = self.generator.act(input_text=inputs)
         return generations
 
+    def split_and_convert(self, split_ratio: float):
+        assert split_ratio < 1, f"split_ratio {split_ratio} should be smaller than 1"
+        uids = list(self.data.keys())
+        train_ids = random.choices(uids, k=int(split_ratio*len(uids)))
+        train, valid = {}, {}
+        
+        for uid in uids:
+            if uid in train_ids:
+                train[uid] = Unit(
+                    unit_id = uid,
+                    source_input=self.data[uid].source_input,
+                    target_output=self.converter.OUTPUT2LABEL[self.data[uid].target_output]
+                )
+            else:
+                valid[uid] = Unit(
+                    unit_id=uid,
+                    source_input=self.data[uid].source_input,
+                    target_output=self.converter.OUTPUT2LABEL[self.data[uid].target_output]
+                )
+        assert len(train) + len(valid) == len(self.data)
+        return (train, valid)
+
     def tune(self, num_epoch: int = 1, split_ratio: float = 0.8, reset_priority_level: bool = False, priority_level: int = 0): # tune generator
-        train, valid = self.split(split_ratio=split_ratio)
+        train, valid = self.split_and_convert(split_ratio=split_ratio)
         self.generator.tune(train=train, valid=valid, num_epoch=num_epoch)
         if reset_priority_level:
             self._reset_priority(priority_level=priority_level)
@@ -270,11 +278,11 @@ if __name__ == "__main__":
     miner.generator = generator
     print("=====3=====")
     manager.generator = generator
-    manager.tune()
-    exit()
     print("=====4=====")
     manager.miner = miner
     manager.converter = converter
+    manager.tune()
+    exit()
     manager.check()
     print("=====5=====")
     manager.update()
