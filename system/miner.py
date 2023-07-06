@@ -4,6 +4,7 @@ from converter import BaseConverter
 from generator import BaseGenerator
 from utils import Unit
 
+
 class BaseMiner():
     def __init__(self, generator: BaseGenerator, converter: BaseConverter):
         self.generator = generator
