@@ -93,7 +93,11 @@ def evaluate_unsupervised_generation(train: GUNDAMManager, vaild: BaseManager):
     acc = compute_acc(generations=generations, outputs=outputs, output2labels=train.converter.OUTPUT2LABEL)
     print(f"===== ACC is {acc} =====" + "\n")
     return (acc, units, generations, outputs)
-    
+
+def evaluate_supervised_generation(train: GUNDAMManager, valid: BaseManager):
+    train.tune()    # res report to wandb
+    evaluate_unsupervised_generation(train=train, valid=valid)
+
 def save_evaluations(args, acc, num, units, generations, outputs):
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path, exist_ok=True)
