@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 def run(args):
     train, valid = config_generation(args)
-    if args.use_supervise:
+    if args.use_tune:
         train = tune_generation(train, args)
     acc, units, generations, outputs = evaluate_few_shot(train=train, vaild=valid)
     save_evaluations(args=args, acc=acc, num=len(train), units=units, generations=generations, outputs=outputs)
@@ -24,7 +24,10 @@ if __name__ == "__main__":
     parser.add_argument("--from_config", action="store_true", help="load generator from config")
     parser.add_argument("--config_name", help="name of config for generator", type=str)
     parser.add_argument("--embed_model", help="name of embedding method for dense retrieval", default="all-mpnet-base-v2", choices=["all-mpnet-base-v2", "text-embedding-ada-002"])
-    parser.add_argument("--use_supervise", help="tune generator or not", action="store_true")
+    
+    parser.add_argument("--use_tune", help="tune generator or not", action="store_true")
+    parser.add_argument("--num_epoch", help="number of epochs to tune", default=1, type=int)
+    parser.add_argument("--split_ratio", help="ratio of training samples in tuning", default=0.8, type=float)
 
     parser.add_argument("--model_name", help="model name of GPT generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B", "gpt2-medium", "gpt2-large"])
     parser.add_argument("--model_path", help="path to generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B", "gpt2-medium", "gpt2-large"])
@@ -46,7 +49,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_batch", help="number of batches to generate", default=None, type=int, required=False)
     parser.add_argument("--max_new_tokens", help="max new tokens to generate", default=None, type=int, required=False)
     parser.add_argument("--max_len", help="max length to generate", default=None, type=int, required=False)
-
     parser.add_argument("--add_io_sep", type=str, default="true", help="add io sep")
 
     args = parser.parse_args()
