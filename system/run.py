@@ -3,17 +3,16 @@ import logging
 import os
 
 from utils import ConfigGenerator
-from evaluator import config_generation, evaluate_unsupervised_generation, save_evaluations
+from evaluator import config_generation, tune_generation, evaluate_few_shot, save_evaluations
 
 logging.basicConfig(level=logging.INFO)
 
-def run_unsupervised_generation(args):
+def run(args):
     train, valid = config_generation(args)
-    acc, units, generations, outputs = evaluate_unsupervised_generation(train=train, vaild=valid)
+    if args.use_supervise:
+        train = tune_generation(train, args)
+    acc, units, generations, outputs = evaluate_few_shot(train=train, vaild=valid)
     save_evaluations(args=args, acc=acc, num=len(train), units=units, generations=generations, outputs=outputs)
-
-def run_supervised_generation(args):
-    pass
 
 
 if __name__ == "__main__":
@@ -25,10 +24,10 @@ if __name__ == "__main__":
     parser.add_argument("--from_config", action="store_true", help="load generator from config")
     parser.add_argument("--config_name", help="name of config for generator", type=str)
     parser.add_argument("--embed_model", help="name of embedding method for dense retrieval", default="all-mpnet-base-v2", choices=["all-mpnet-base-v2", "text-embedding-ada-002"])
-    parser.add_argument("--mode", help="mode for evaluation", default="unsupervised", type=str, choices=["unsupervised", "supervised"])
+    parser.add_argument("--use_supervise", help="tune generator or not", action="store_true")
 
-    parser.add_argument("--model_name", help="model name of GPT generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B"])
-    parser.add_argument("--model_path", help="path to generator", default="EleutherAI/gpt-neo-1.3B", type=str)
+    parser.add_argument("--model_name", help="model name of GPT generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B", "gpt2-medium", "gpt2-large"])
+    parser.add_argument("--model_path", help="path to generator", default="EleutherAI/gpt-neo-1.3B", type=str, choices=["EleutherAI/gpt-neo-1.3B", "gpt2-medium", "gpt2-large"])
     parser.add_argument("--embed_path", help="path to embeddings", type=str)
     parser.add_argument("--output_path", help="path to store output", type=str)
     parser.add_argument("--batch_size", help="batch_size of generator", default=4, type=int)
@@ -74,9 +73,4 @@ if __name__ == "__main__":
                 num_batch=args.num_batch, max_new_tokens=args.max_new_tokens)
     args.cfg_generator4evaluator = cfg_generator4evaluator
 
-    if args.mode == "unsupervised":
-        run_unsupervised_generation(args)
-    elif args.mode == "supervised":
-        run_supervised_generation(args)
-    else:
-        raise NotImplementedError
+    run(args)

@@ -78,7 +78,7 @@ def config_generation(args):
     logging.info("===== GUNDAMManager LOADED ======" + "\n")
     return (train, valid)
 
-def evaluate_unsupervised_generation(train: GUNDAMManager, vaild: BaseManager):
+def evaluate_few_shot(train: GUNDAMManager, vaild: BaseManager):
     train.generator.model.zero_grad()
     train.generator.model.eval()
 
@@ -94,9 +94,15 @@ def evaluate_unsupervised_generation(train: GUNDAMManager, vaild: BaseManager):
     print(f"===== ACC is {acc} =====" + "\n")
     return (acc, units, generations, outputs)
 
-def evaluate_supervised_generation(train: GUNDAMManager, valid: BaseManager):
-    train.tune()    # res report to wandb
-    evaluate_unsupervised_generation(train=train, valid=valid)
+def tune_generation(train: GUNDAMManager, args):
+    train.tune(
+        num_epoch=args.num_epoch, split_ratio=args.split_ratio, reset_priority_level=True
+    )    # res report to wandb
+    _, max_priority_level = train.get_priority_data()
+    while args.priority_level > max_priority_level:
+        train.update()  # generate args.priority_level data
+    train.set_retriever(priority_level=args.priority_level, n_shots=args.n_shots)
+    return train
 
 def save_evaluations(args, acc, num, units, generations, outputs):
     if not os.path.exists(args.output_path):
