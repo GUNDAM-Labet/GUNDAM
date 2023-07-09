@@ -34,7 +34,7 @@ class BaseManager():
     def __len__(self):
         return len(self.data)  
     
-    def load(self, data_dict: Dict = None, source_key: str = None, target_key: str = None, re_compute: bool = False, load_embedding: bool = False):
+    def load(self, data_dict: Dict = None, source_key: str = None, target_key: str = None, re_compute: bool = True, load_embedding: bool = False):
         data_path = os.path.join(self.data_path, f"{self.data_name}_{self.data_type}.json")
         if os.path.exists(data_path):
             self.data = self._load_from_stored_data(data_path=data_path)

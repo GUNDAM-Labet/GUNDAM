@@ -82,7 +82,7 @@ class SimilarRetriever(BaseRetriever): # retriever top-k cosine similar units
             self.W_norm = vt.T.dot(np.diag(1 / s)).dot(vt)
         
     def get_samples(self, target: Unit) -> List[Unit]:
-        assert self.units and self.instance_emb, "load data before sample"
+        assert self.units and self.instance_emb is not None, "load data before sample"
         assert isinstance(target.source_emb, np.ndarray), f"{type(target.source_emb)}"
         x = self.instance_emb
         y = target.source_emb
@@ -179,7 +179,7 @@ class DiverseRetriever(BaseRetriever): # retrieve top-k maximal marginal relevan
         return samples
     
     def get_batch_samples(self, target_indices: List[int], targets: List[Unit] = None) -> List[List[Unit]]: # todo: opt no pre-compute version
-        assert self.units and self.instance_emb, "load data before sample"
+        assert self.units and self.instance_emb is not None, "load data before sample"
         if self.n_process <= 1:
             return [self.get_samples(target_idx) for target_idx in target_indices]
         

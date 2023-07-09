@@ -38,12 +38,18 @@ def config_generation(args):
     cfg.load()
 
     dataset = datasets.load_dataset(cfg.get(args.dataset).dataset_name)
+    if args.retriever in ["ran", "hard"]:
+        load_embedding = False
+    elif args.retriever in ["sim", "div"]:
+        load_embedding = True
+    else:
+        raise NotImplementedError
     
-    valid = BaseManager(data_name=args.dataset, data_type=cfg.get(args.dataset).valid_type, embed_path=args.embed_path)
-    valid.load(data_dict=dataset, source_key=cfg.get(args.dataset).source_key, target_key=cfg.get(args.dataset).target_key)
+    valid = BaseManager(data_name=args.dataset, data_type=cfg.get(args.dataset).valid_type, embed_path=args.embed_path, embed_model=args.embed_model)
+    valid.load(data_dict=dataset, source_key=cfg.get(args.dataset).source_key, target_key=cfg.get(args.dataset).target_key, load_embedding=load_embedding)
 
     train = GUNDAMManager(data_name=args.dataset, data_type=cfg.get(args.dataset).train_type, embed_path=args.embed_path, embed_model=args.embed_model)
-    train.load(data_dict=dataset, source_key=cfg.get(args.dataset).source_key, target_key=cfg.get(args.dataset).target_key)
+    train.load(data_dict=dataset, source_key=cfg.get(args.dataset).source_key, target_key=cfg.get(args.dataset).target_key, load_embedding=load_embedding)
     generator4miner = GPTGenerator(model_name=args.model_name, model_path=args.model_path, from_config=args.from_config, 
         config_name=args.config_name, is_autoreg=args.is_autoreg, batch_size=args.batch_size, use_fp16=args.use_fp16)
     generator4miner.load()
