@@ -41,30 +41,30 @@ def load_converter(name: str) -> BaseConverter:
 
 @register_converter("sst2")
 class SST2Converter(BaseConverter):
-    INTRO = "analyze the sentiment of the following text excerpts, categorizing them as either 'positive', or 'negative'." + "\n"
+    INTRO = "analyze the sentiment of the following text excerpts, categorizing them as either 'positive', or 'negative' after 'target:'." + "\n"
     OUTPUT2LABEL = {0: "negative", 1: "positive"}
 
 @register_converter("sst5")
 class SST5Converter(BaseConverter):
-    INTRO = "analyze the sentiment of the following text excerpts, categorizing them as either 'positive', or 'negative'." + "\n"
+    INTRO = "analyze the sentiment of the following text excerpts, categorizing them as either 'positive', or 'negative' after 'target:'." + "\n"
     OUTPUT2LABEL = {0: "negative", 1: "positive"}
 
 @register_converter("fpb")
 class FPBConverter(BaseConverter):
-    INTRO = "analyze the sentiment of the following text excerpts, categorizing them as one label from following choices 'positive', 'neutral' and 'negative'." + "\n"
+    INTRO = "analyze the sentiment of the following text excerpts, categorizing them as one label from following choices 'positive', 'neutral' and 'negative' after 'target:'." + "\n"
     OUTPUT2LABEL = {0: "negative", 1: "neutral", 2: "positive"}
 
 @register_converter("cola")
 class COLAConverter(BaseConverter):
-    INTRO = "analyze the linguistic acceptability of the following text excerpts, categorizing them as either 'positive', or 'negative'." + "\n"
+    INTRO = "analyze the linguistic acceptability of the following text excerpts, categorizing them as either 'positive', or 'negative' after 'target:'." + "\n"
     OUTPUT2LABEL = {0: "negative", 1: "positive"}
 
 @register_converter("trec")
 class TRECConverter(BaseConverter):
-    INTRO = "analyze the topic of the following text excerpts, categorizing them as one label from following 6 choices 'abbreviation', 'entity', 'description', 'human', 'location' and 'number'." + "\n"
+    INTRO = "analyze the topic of the following text excerpts, categorizing them as one label from following 6 choices 'abbreviation', 'entity', 'description', 'human', 'location' and 'number' after 'target:'." + "\n"
     OUTPUT2LABEL = {0: "abbreviation", 1: "entity", 2: "description", 3: "human", 4: "location", 5: "number"}
 
 @register_converter("subj")
 class SUBJConverter(BaseConverter):
-    INTRO = "determine whether the following text excerpts is 'subjective' or 'objective'." + "\n"
+    INTRO = "determine whether the following text excerpts is 'subjective' or 'objective' after 'target:'." + "\n"
     OUTPUT2LABEL = {0: "objective", 1: "subjective"}

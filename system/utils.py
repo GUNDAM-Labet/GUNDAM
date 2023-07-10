@@ -128,7 +128,7 @@ class ConfigGenerator:
         self.max_source_len = max_source_len
         self.max_target_len = max_target_len
 
-    def set(self, decode_method=None, add_score=None, num_generate=None, max_new_tokens=None, num_batch=None, 
+    def config(self, decode_method=None, add_score=None, num_generate=None, max_new_tokens=None, num_batch=None, 
                 num_return_sequence=None, temperature=None, max_source_len=None, max_target_len=None):
         self.decode_method = decode_method if decode_method else self.decode_method
         self.add_score = add_score if add_score else self.add_score

@@ -87,10 +87,10 @@ class GPTGenerator(BaseGenerator):
         else:
             self.max_context_len = 4096
 
-    def set(self, decode_method: str = None, num_generate: int = None, num_return_sequence: int = None, 
+    def config(self, decode_method: str = None, num_generate: int = None, num_return_sequence: int = None, 
                 add_score: bool = None, temperature: float = None, max_new_tokens: int = None, 
                 num_batch: int = None, max_source_len: int = None, max_target_len: int = None):
-        self.cfg.set(
+        self.cfg.config(
             decode_method=decode_method, add_score=add_score, num_generate=num_generate, max_new_tokens=max_new_tokens,
             num_batch=num_batch, num_return_sequence=num_return_sequence, temperature=temperature, 
             max_source_len=max_source_len, max_target_len=max_target_len
@@ -233,3 +233,22 @@ class GPTGenerator(BaseGenerator):
                                                         "labels": torch.stack([f[2] for f in data])})
         trainer.train()
         self.tokenizer.save_pretrained(self.model_path)
+    
+    def interact(self):
+        input_text = input("> ")
+        max_new_tokens = int(input("set max_new_tokens>"))
+        self.config(max_new_tokens=max_new_tokens)
+
+        while input_text != "exit":
+            if self.is_autoreg:
+                input_text = input_text #+ AutoregLMDataset.IO_SEP
+            input_text = self.tokenizer.encode(input_text, return_tensors='pt').cuda()
+            print(f"> input text: {input_text}")
+            outputs = self.act(input_text=input_text)
+            print(f"> output tokens: {outputs}")
+            print(
+                f"> output text: {self.tokenizer.batch_decode(outputs, skip_special_tokens=True, clean_up_tokenization_spaces=False)}"
+            )
+            print("=============================================")
+            input_text = input("> ")
+
