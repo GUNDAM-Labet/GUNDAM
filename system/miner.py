@@ -64,15 +64,3 @@ class Pair2OneMiner(BaseMiner):
     def __init__(self, generator: BaseGenerator, converter: BaseConverter):
         super().__init__(generator=generator, converter=converter)
         raise NotImplementedError
-
-
-class One2PairMiner(BaseMiner):
-    def __init__(self, generator: BaseGenerator, converter: BaseConverter):
-        super().__init__(generator=generator, converter=converter)
-        raise NotImplementedError
-
-
-class Pair2PairMiner(BaseMiner):
-    def __init__(self, generator: BaseGenerator, converter: BaseConverter):
-        super().__init__(generator=generator, converter=converter)
-        raise NotImplementedError

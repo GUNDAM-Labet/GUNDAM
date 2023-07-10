@@ -26,7 +26,16 @@ def set_seed(seed):
 
 def compute_acc(generations, outputs, output2labels):
     num, acc = 0, 0
+
+    debug = 0
     for generation, output in zip(generations, outputs):
+
+        print("===== DEBUG =====")
+        print(generation)
+        print(output2labels[output])
+        debug += 1
+        if debug > 10:
+            exit()
         if generation == output2labels[output]:
             acc += 1
         num += 1
