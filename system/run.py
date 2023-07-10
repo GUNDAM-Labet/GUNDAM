@@ -47,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("--temperature", help="temperature for sampling", default=1.0, type=float)
     parser.add_argument("--decode_method", help="decode method", default="greedy", choices=["greedy", "beam", "sample"])
     parser.add_argument("--num_batch", help="number of batches to generate", default=None, type=int, required=False)
-    parser.add_argument("--max_new_tokens", help="max new tokens to generate", default=None, type=int, required=False)
+    parser.add_argument("--max_new_tokens", help="max new tokens to generate", default=1, type=int, required=False)
     parser.add_argument("--max_len", help="max length to generate", default=None, type=int, required=False)
     parser.add_argument("--add_io_sep", type=str, default="true", help="add io sep")
 
