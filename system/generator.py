@@ -1,5 +1,6 @@
 import torch
 import logging
+import os
 
 from typing import Iterator, List, Dict
 from transformers import (
@@ -13,12 +14,14 @@ logging.basicConfig(level=logging.INFO)
     
 
 class BaseGenerator():
-    def __init__(self, model_name, model_path, from_config: bool, config_name: str, is_autoreg: bool,
-                        batch_size: int, use_fp16: bool):
+    def __init__(self, model_name: str, save_path: str, is_autoreg: bool, batch_size: int, use_fp16: bool):
         self.model_name = model_name
-        self.model_path = model_path
-        self.from_config = from_config
-        self.config_name = config_name
+        if save_path is None:
+            current_path = os.path.abspath(os.getcwd())
+            key_file = os.path.join(os.path.dirname(current_path), "openai_key.json")
+
+
+        self.save_path = save_path
         
         self.use_fp16 = use_fp16
         self.is_autoreg = is_autoreg
@@ -63,10 +66,8 @@ class GPTGenerator(BaseGenerator):
         self.cfg = ConfigGenerator()
 
     def load(self):
-        if self.from_config:
-            tokenizer, model = self._load_from_config()
-        else:
-            tokenizer, model = self._load_from_pretrained()
+
+        tokenizer, model = self._load_from_pretrained()
         
         self.tokenizer = tokenizer
         self.model = model.to(self.device).eval()
@@ -130,7 +131,7 @@ class GPTGenerator(BaseGenerator):
         
         with torch.no_grad():
             for input_text_batch in list(self.chunks(input_text, self.batch_size)):
-                if self.cfg.num_batch:
+                if self.cfg.num_batch is not None:
                     if batch_idx >= self.cfg.num_batch:
                         break
                 
@@ -252,3 +253,7 @@ class GPTGenerator(BaseGenerator):
             print("=============================================")
             input_text = input("> ")
 
+
+
+if __name__ == "__main__":
+    generator = GPTGenerator()
