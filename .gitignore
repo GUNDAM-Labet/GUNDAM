@@ -250,6 +250,8 @@ log/
 /log/
 logs/
 /logs/
+model/
+/model/
 
 # openai
 openai_key.json

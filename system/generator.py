@@ -2,7 +2,7 @@ import torch
 import logging
 import os
 
-from typing import Iterator, List, Dict
+from typing import List, Dict
 from transformers import (
     AutoModelForSeq2SeqLM, AutoTokenizer, AutoModelForCausalLM, AutoConfig, 
     TrainingArguments, Trainer
@@ -14,21 +14,27 @@ logging.basicConfig(level=logging.INFO)
     
 
 class BaseGenerator():
-    def __init__(self, model_name: str, save_path: str, is_autoreg: bool, batch_size: int, use_fp16: bool):
+    def __init__(self, model_name: str, save_path: str, is_autoreg: bool, batch_size: int, use_fp16: bool, from_save: bool):
         self.model_name = model_name
+        current_path = os.path.abspath(os.getcwd())
         if save_path is None:
-            current_path = os.path.abspath(os.getcwd())
-            key_file = os.path.join(os.path.dirname(current_path), "openai_key.json")
-
-
+            save_path = os.path.join(os.path.dirname(current_path), "model/")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path, exist_ok=True)
+        
         self.save_path = save_path
+        self.from_save = from_save
+        self.logging_path = os.path.join(os.path.dirname(current_path), "log/")
         
         self.use_fp16 = use_fp16
         self.is_autoreg = is_autoreg
         self.batch_size = batch_size
         self.max_context_len = 4096
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        logging.info(f"use device: {self.device}, load model from {model_path}")
+        if from_save:
+            logging.info(f"use device: {self.device}, load model from {save_path}")
+        else:
+            logging.info(f"use device: {self.device}, load model from online")
 
         self.model, self.tokenizer = None, None
         
@@ -59,15 +65,18 @@ class BaseGenerator():
 
 
 class GPTGenerator(BaseGenerator):
-    def __init__(self, model_name: str = "EleutherAI/gpt-neo-1.3B", model_path: str = "EleutherAI/gpt-neo-1.3B", from_config: bool = False, 
-                        config_name: str = None, is_autoreg: bool = True, batch_size: int = 32, use_fp16: bool = False):
-        super().__init__(model_name=model_name, model_path=model_path, from_config=from_config, config_name=config_name, 
-                            is_autoreg=is_autoreg, batch_size=batch_size, use_fp16=use_fp16)
+    def __init__(self, model_name: str = "gpt2-medium", save_path: str = None, is_autoreg: bool = True, batch_size: int = 32, 
+                        use_fp16: bool = False, from_save: bool = True):
+        super().__init__(model_name=model_name, save_path=save_path, is_autoreg=is_autoreg, batch_size=batch_size, 
+                            use_fp16=use_fp16, from_save=from_save)
         self.cfg = ConfigGenerator()
 
     def load(self):
-
-        tokenizer, model = self._load_from_pretrained()
+        save_dir = os.path.join(self.save_path, f"{self.model_name}/")
+        if self.from_save and os.path.exists(save_dir):
+            tokenizer, model = self._load_from_save(save_dir)
+        else:
+            tokenizer, model = self._load_from_pretrained()
         
         self.tokenizer = tokenizer
         self.model = model.to(self.device).eval()
@@ -97,30 +106,26 @@ class GPTGenerator(BaseGenerator):
             max_source_len=max_source_len, max_target_len=max_target_len
         )
 
-    def _load_from_config(self):
-        assert self.is_autoreg, "config only works for autoreg now"
-        config = AutoConfig.from_pretrained(self.config_name)
+    def _load_from_save(self, save_dir: str):
+        config = AutoConfig.from_pretrained(self.model_name)
         model = AutoModelForCausalLM.from_config(config)
-        tokenizer = AutoTokenizer.from_pretrained(self.config_name)
+        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
-        state_dict = torch.load(self.model_path)
+        state_dict = torch.load(save_dir)
         model.load_state_dict(state_dict)
         if self.use_fp16:
             model = model.half()
         return (tokenizer, model)
     
     def _load_from_pretrained(self):
-        try:
-            tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        except OSError: # for cases where only the model is saved, not the tokenizer
-            tokenizer = AutoTokenizer.from_pretrained(self.config_name)
+        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         
         if self.is_autoreg:
-            model = AutoModelForCausalLM.from_pretrained(self.model_path)
+            model = AutoModelForCausalLM.from_pretrained(self.model_name)
             if self.use_fp16:
                 model = model.half()
         else:
-            model = AutoModelForSeq2SeqLM.from_pretrained(self.model_path)
+            model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
         return (tokenizer, model)
 
     def act(self, input_text) -> Dict:
@@ -223,17 +228,18 @@ class GPTGenerator(BaseGenerator):
 
         train = Dataset4Tune(data=train, tokenizer=self.tokenizer, cfg=self.cfg)
         valid = Dataset4Tune(data=valid, tokenizer=self.tokenizer, cfg=self.cfg)
-        training_args = TrainingArguments(do_train=True, do_eval=True, output_dir=self.model_path, overwrite_output_dir=True,
+        training_args = TrainingArguments(do_train=True, do_eval=True, output_dir=self.save_path, overwrite_output_dir=True,
                             num_train_epochs=num_epoch, fp16=self.use_fp16, logging_steps=128, save_steps=1024, 
                             per_device_train_batch_size=self.batch_size, warmup_steps=128, weight_decay=0.01, 
-                            logging_dir=self.model_path, logging_strategy="steps", evaluation_strategy="steps", 
+                            logging_dir=self.logging_path, logging_strategy="steps", evaluation_strategy="steps", 
                             eval_steps=1024, report_to="wandb")
         trainer = Trainer(model=self.model, args=training_args, train_dataset=train, eval_dataset=valid,
                             data_collator=lambda data: {"input_ids": torch.stack([f[0] for f in data]),
                                                         "attention_mask": torch.stack([f[1] for f in data]), 
                                                         "labels": torch.stack([f[2] for f in data])})
         trainer.train()
-        self.tokenizer.save_pretrained(self.model_path)
+        trainer.save_model(self.save_path)
+        self.tokenizer.save_pretrained(self.save_path)
     
     def interact(self):
         input_text = input("> ")
@@ -252,8 +258,3 @@ class GPTGenerator(BaseGenerator):
             )
             print("=============================================")
             input_text = input("> ")
-
-
-
-if __name__ == "__main__":
-    generator = GPTGenerator()

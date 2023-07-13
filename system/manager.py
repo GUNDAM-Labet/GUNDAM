@@ -269,7 +269,7 @@ if __name__ == "__main__":
     converter = SST2Converter()
     miner = One2OneMiner()
     print("=====0=====")
-    generator = GPTGenerator(model_name="gpt2-medium", model_path="gpt2-medium")
+    generator = GPTGenerator(model_name="gpt2-medium")
     generator.batch_size = 8
     print("=====1=====")
     generator.load()
