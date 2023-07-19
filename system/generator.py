@@ -24,7 +24,7 @@ class BaseGenerator():
         
         self.save_path = save_path
         self.from_save = from_save
-        self.logging_path = os.path.join(os.path.dirname(current_path), "log/")
+        self.logging_path = os.path.join(os.path.dirname(current_path), "logg/")
         
         self.use_fp16 = use_fp16
         self.is_autoreg = is_autoreg
@@ -238,8 +238,13 @@ class GPTGenerator(BaseGenerator):
                                                         "attention_mask": torch.stack([f[1] for f in data]), 
                                                         "labels": torch.stack([f[2] for f in data])})
         trainer.train()
-        trainer.save_model(self.save_path)
-        self.tokenizer.save_pretrained(self.save_path)
+
+        save_dir = os.path.join(self.save_path, f"{self.model_name}/")
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+
+        trainer.save_model(save_dir)
+        self.tokenizer.save_pretrained(save_dir)
     
     def interact(self):
         input_text = input("> ")
