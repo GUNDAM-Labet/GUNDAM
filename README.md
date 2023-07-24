@@ -30,8 +30,34 @@ Moreover, considering that many real-world data corpus would keep growing, we de
 <img src="assets/overview.jpeg" width=100%>
 
 ## Use Cases
-The significant advantage of GUNDAM is that GUNDAM can be easily deployed on any existing data management platform because the core idea of GUNDAM
+The significant advantage of GUNDAM is that GUNDAM can be easily deployed on any existing data management platform because the core idea of GUNDAM is to assign different priority levels to the stored data to show their data qualities regarding the given language model.
 
 
 ## ToDo (Latest Update at 2023/07/24)
+- [x] Release basic versions of a one-to-one miner and GPT-2 based generators in both unsupervised learning settings (a.k.a., few-shot inference) and supervised learning settings (a.k.a., warm-up inference).
+- [x] Support random-based demonstration retrievers, relevance-based demonstration retrievers, and diversity-based demonstration retrievers. 
+- [ ] Support pair-to-one miner and GPT-3 based generators.
+- [ ] Release textual dataset of sufficiency and necessity.
+- [ ] Release detailed document tutorial and readme guidance.
 
+
+## Citing CORE
+```bibtex
+@software{GUNDAM,
+  author = {Jiarui Jin, Yuwei Wu, Mengyue Yang, Xiaoting He, Weinan Zhang, Yiming Yang, Yong Yu, and Jun Wang},
+  title = {GUNDAM: A Data-Centric Manager for Your Plug-in Data with Language Models},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  version = {0.0},
+  howpublished = {\url{https://github.com/GUNDAM-Labet/GUNDAM}},
+}
+```
+
+
+## The Team
+Core developers of the GUNDAM system are [Jiarui Jin](https://github.com/Jinjiarui), [Yuwei Wu](https://github.com/Willyoung2017) and [Mengyue Yang](https://github.com/ymy4323460).
+
+
+## License
+GUNDAM is released under the Apache License, Version 2.0.
