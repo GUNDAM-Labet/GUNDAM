@@ -1,12 +1,37 @@
-<img src="assets/logo.jpg">
-
-
 # Golden plUg-iN DAta Manager (GUNDAM)
 
-GUNDAM is an open data manager based on large language models.
+<img src="assets/logo.jpg">
+
+<p align="center">
+    <a href="https://jinjiarui.github.io/gundam/">Project</a> |
+    <a href="https://jinjiarui.github.io/preprints/GUNDAM.pdf">Paper</a> |
+    <a href="https://core-labet.readthedocs.io/en/latest/">Documentation</a>
+</p>
+
+**GUNDAM** is a data manager that utilizes language models to efficiently handle textual data, which is built upon [PyTorch](https://pytorch.org). 
+GUNDAM is:
+
+- **Comprehensive**: GUNDAM provides a data manager including our proposed miner, a GPT-2 based generator, and a demonstration retriever, and all of these components are extendable.
+- **Flexible**: GUNDAM supports GPT-2 language models with different sizes.
+- **Efficient**: GUNDAM provides an efficient one-to-one miner to check data quality.
+
+--------------------------------------------------------------------------------
+
+## Brief Introduction
+GUNDAM is a novel data management framework that measures the sufficiency and necessity of plugging-in demonstrations conditioned on language models. 
+We show that the proposed sufficiency and necessity metrics
+can be operated on both demonstration instances (i.e., instance level) and demonstration sets (i.e., set level). 
+Thus, the set of sufficient and necessary plug-in data, named as a golden plug-in set, can be regarded as a core set including the informative samples. 
+Since enumerating and measuring all the possible subsets is infeasible, we design new tree-based search algorithms to mine the golden plug-in set.
+Notice that the golden plug-in set could be pre-computed and stored to save online computation costs. 
+In this regard, non-parametric demonstration retrievers could perform on the stored golden plug-in set instead of the whole data corpus, to avoid retrieving insufficient or unnecessary demonstrations. 
+Moreover, considering that many real-world data corpus would keep growing, we develop an incremental update algorithm to avoid re-computing GUNDAM over all the changed and unchanged parts.
+
+<img src="assets/overview.jpeg" width=100%>
+
+## Use Cases
+The significant advantage of GUNDAM is that GUNDAM can be easily deployed on any existing data management platform because the core idea of GUNDAM
 
 
-To run docs
-```
-    sphinx-build -b html source build
-```
+## ToDo (Latest Update at 2023/07/24)
+
