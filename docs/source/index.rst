@@ -40,13 +40,13 @@ If you find GUNDAM useful, please cite it in your publications.
 .. code-block:: bibtex
 
       @software{GUNDAM,
-      author = {Jiarui Jin, Yuwei Wu, Mengyue Yang, Xiaoting He, Weinan Zhang, Yiming Yang, Yong Yu, and Jun Wang},
-      title = {GUNDAM: A Data-Centric Manager for Your Plug-in Data with Language Models},
-      year = {2023},
-      publisher = {GitHub},
-      journal = {GitHub repository},
-      version = {0.1},
-      howpublished = {\url{https://github.com/GUNDAM-Labet/GUNDAM}},
+        author = {Jiarui Jin, Yuwei Wu, Mengyue Yang, Xiaoting He, Weinan Zhang, Yiming Yang, Yong Yu, and Jun Wang},
+        title = {GUNDAM: A Data-Centric Manager for Your Plug-in Data with Language Models},
+        year = {2023},
+        publisher = {GitHub},
+        journal = {GitHub repository},
+        version = {0.0},
+        howpublished = {\url{https://github.com/GUNDAM-Labet/GUNDAM}},
       }
 
 
