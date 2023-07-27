@@ -5,7 +5,7 @@
 <p align="center">
     <a href="https://jinjiarui.github.io/gundam/">Project</a> |
     <a href="https://jinjiarui.github.io/preprints/GUNDAM.pdf">Paper</a> |
-    <a href="https://core-labet.readthedocs.io/en/latest/">Documentation</a>
+    <a href="https://gundam-labet.readthedocs.io/en/latest/">Documentation</a>
 </p>
 
 **GUNDAM** is a data manager that utilizes language models to efficiently handle textual data, which is built upon [PyTorch](https://pytorch.org). 
